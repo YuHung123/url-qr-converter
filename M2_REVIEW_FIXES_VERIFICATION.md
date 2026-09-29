@@ -133,11 +133,11 @@ localStorage、sessionStorage、cookies、IndexedDB、CacheStorage 均空，無 
 
 ## 10. Git
 
-本報告隨 review-fixes commit 提交；建立後另以 documentation commit 記錄實際 hash，沿用既有做法。
+本報告隨 review-fixes commit 提交；後續以 `docs: record verified M2 review fixes commit` 記錄實際 hash，沿用既有做法，不改寫修正 commit。
 
-- Review-fixes commit：待提交後記錄。
+- Review-fixes commit：`581e8f867accaca1a05dc5d2f3ed605c8dd07e53`。
 - Commit message：`fix: harden qr decoding integrity`。
-- Working tree：提交後另行檢查並記錄。
+- Working tree：review-fixes commit 後 `git status --short` 無輸出，工作樹乾淨；documentation commit 後再以同一指令確認。
 - 沒有建立 remote，沒有 push。
 - 提交範圍僅 README、本報告、三個 source 檔、兩個 test 檔與測試用 Byte fixture helper；不含 node_modules、dist、PNG、screenshots、scratch scripts 或 browser artifacts。
 
