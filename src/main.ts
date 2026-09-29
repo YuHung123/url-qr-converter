@@ -1,3 +1,4 @@
+import { decodeImage } from './decode';
 import { createQrCanvas, exportPng, normalizeUrl } from './qr';
 
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
@@ -143,6 +144,73 @@ downloadButton.addEventListener('click', async () => {
       downloadBusy = false;
       downloadButton.removeAttribute('aria-disabled');
       downloadButton.textContent = 'Download PNG';
+    }
+  }
+});
+
+const imageInput = document.querySelector<HTMLInputElement>('#qr-image')!;
+const decodedUrl = document.querySelector<HTMLTextAreaElement>('#decoded-url')!;
+const copyButton = document.querySelector<HTMLButtonElement>('#copy-button')!;
+const decodeStatus = document.querySelector<HTMLElement>('#result-hint')!;
+const decodeError = document.querySelector<HTMLElement>('#decode-error')!;
+let decodeGeneration = 0;
+let currentUrl = '';
+let copyBusy = false;
+
+imageInput.addEventListener('change', async () => {
+  const generation = ++decodeGeneration;
+  const file = imageInput.files?.[0];
+  // Release the input's reference, and allow choosing the same file again.
+  imageInput.value = '';
+  currentUrl = decodedUrl.value = '';
+  copyBusy = false;
+  copyButton.disabled = true;
+  copyButton.removeAttribute('aria-disabled');
+  copyButton.textContent = 'Copy URL';
+  decodeError.textContent = '';
+  imageInput.removeAttribute('aria-invalid');
+  decodeStatus.textContent = file ? '正在解析圖片…' : '目前尚未解析圖片。';
+  if (!file) return;
+
+  const result = await decodeImage(file, () => generation === decodeGeneration);
+  if (generation !== decodeGeneration || result.kind === 'stale') return;
+  decodeStatus.textContent = '';
+  if (result.kind === 'success') {
+    currentUrl = decodedUrl.value = result.url;
+    copyButton.disabled = false;
+    decodeStatus.textContent = '已解析網址，可複製或手動選取。';
+  } else {
+    const messages = {
+      'invalid-image': '無法將所選檔案讀取為圖片，請選擇有效的圖片檔。',
+      'no-qr': '圖片中找不到可讀取的 QR Code。請選擇清晰的 QR Code 圖片。',
+      'unsupported-url': '已找到 QR Code，但內容不是支援的完整 HTTP / HTTPS 網址。',
+      'decode-failure': '無法解析此圖片，請重試或選擇另一張圖片。',
+      'too-large': '圖片檔案過大，請選擇 20 MiB 以下的圖片。',
+    };
+    imageInput.setAttribute('aria-invalid', 'true');
+    decodeError.textContent = messages[result.kind];
+  }
+});
+
+copyButton.addEventListener('click', async () => {
+  if (!currentUrl || copyBusy) return;
+  const generation = decodeGeneration;
+  const url = currentUrl;
+  copyBusy = true;
+  copyButton.setAttribute('aria-disabled', 'true');
+  copyButton.textContent = '正在複製…';
+  decodeError.textContent = '';
+  decodeStatus.textContent = '';
+  try {
+    await navigator.clipboard.writeText(url);
+    if (generation === decodeGeneration) decodeStatus.textContent = '網址已複製。';
+  } catch {
+    if (generation === decodeGeneration) decodeError.textContent = '無法複製網址，請在結果欄位手動選取並複製。';
+  } finally {
+    if (generation === decodeGeneration) {
+      copyBusy = false;
+      copyButton.removeAttribute('aria-disabled');
+      copyButton.textContent = 'Copy URL';
     }
   }
 });

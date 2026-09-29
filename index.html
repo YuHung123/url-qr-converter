@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="在瀏覽器內將網址轉成 QR Code，下載清晰的 PNG 圖片，無需上傳網址。" />
+    <meta name="description" content="在瀏覽器內將網址轉成 QR Code，下載 PNG，或從 QR Code 圖片讀取網址，全程無需上傳。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -27,7 +27,7 @@
         </div>
 
         <div class="workspace">
-          <p id="milestone-note" class="milestone-note"><span class="badge">M1 · 網址轉 QR Code</span><span>已支援 PNG 下載；圖片解析將於 M2 開放。</span></p>
+          <p id="milestone-note" class="milestone-note"><span class="badge">網址與 QR Code 互轉</span><span>支援 PNG 下載與圖片解析。</span></p>
 
           <section id="encode-panel" role="tabpanel" aria-labelledby="encode-tab" tabindex="0">
             <div class="panel-heading">
@@ -68,20 +68,21 @@
             <div class="converter-grid">
               <div class="input-section">
                 <label for="qr-image">QR Code 圖片</label>
-                <input id="qr-image" name="qr-image" type="file" accept="image/png,image/jpeg,image/webp" disabled aria-describedby="image-hint decode-note" />
-                <p id="image-hint" class="field-hint">預計支援 PNG、JPEG 與 WebP 圖片。</p>
-                <p id="decode-note" class="availability">M2 將開放選擇圖片、解析與複製網址。</p>
+                <input id="qr-image" name="qr-image" type="file" accept="image/*" aria-describedby="image-hint decode-note decode-error" />
+                <p id="image-hint" class="field-hint">選擇 PNG、JPEG、WebP 等瀏覽器可讀取的圖片（最大 20 MiB）。</p>
+                <p id="decode-note" class="availability">只接受完整 HTTP / HTTPS 網址；圖片不會上傳。</p>
               </div>
               <div class="output-section">
                 <label for="decoded-url">解析結果 <span lang="en">URL</span></label>
-                <textarea id="decoded-url" rows="5" readonly placeholder="圖片中的網址將顯示於此" aria-describedby="result-hint"></textarea>
-                <p id="result-hint" class="field-hint">目前尚未解析圖片。</p>
-                <button id="copy-button" class="button secondary-button" type="button" disabled aria-describedby="decode-note">Copy URL</button>
+                <textarea id="decoded-url" rows="5" readonly placeholder="圖片中的網址將顯示於此" aria-describedby="result-hint decode-error"></textarea>
+                <p id="result-hint" class="field-hint" role="status" aria-atomic="true">目前尚未解析圖片。</p>
+                <p id="decode-error" class="error-message" role="alert" aria-atomic="true"></p>
+                <button id="copy-button" class="button secondary-button" type="button" disabled aria-describedby="result-hint decode-error">Copy URL</button>
               </div>
             </div>
           </section>
         </div>
-        <noscript><p class="noscript-note">請啟用 JavaScript 以切換模式、產生 QR Code 與下載 PNG。</p></noscript>
+        <noscript><p class="noscript-note">請啟用 JavaScript 以切換模式、產生／解析 QR Code、下載 PNG 與複製網址。</p></noscript>
       </main>
 
       <footer class="page-footer"><p>一個專注於網址與 QR Code 的小工具。</p><p>無帳號 · 無追蹤 · 無雲端儲存</p></footer>

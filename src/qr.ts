@@ -28,7 +28,7 @@ export function assertHostnameCharacters(hostname: string): void {
   }
 }
 
-export function createQrCanvas(url: string): HTMLCanvasElement {
+export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number } {
   // 此 encoder 的 Byte 模式不是 UTF-8；只接受已正規化的 ASCII URL。
   if (/[^\x00-\x7f]/u.test(url)) {
     throw new Error('QR Code 內容必須是已正規化的 ASCII 網址。');
@@ -40,21 +40,30 @@ export function createQrCanvas(url: string): HTMLCanvasElement {
   const quietZone = 4;
   const modules = qr.getModuleCount();
   const scale = Math.ceil(1024 / (modules + quietZone * 2));
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = (modules + quietZone * 2) * scale;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('無法建立 QR Code 畫布。');
-
-  context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = '#000000';
+  const size = (modules + quietZone * 2) * scale;
+  const data = new Uint8ClampedArray(size * size * 4).fill(255);
   for (let row = 0; row < modules; row++) {
     for (let column = 0; column < modules; column++) {
-      if (qr.isDark(row, column)) {
-        context.fillRect((column + quietZone) * scale, (row + quietZone) * scale, scale, scale);
+      if (!qr.isDark(row, column)) continue;
+      for (let y = (row + quietZone) * scale; y < (row + quietZone + 1) * scale; y++) {
+        for (let x = (column + quietZone) * scale; x < (column + quietZone + 1) * scale; x++) {
+          const offset = (y * size + x) * 4;
+          data[offset] = data[offset + 1] = data[offset + 2] = 0;
+        }
       }
     }
   }
+  return { data, width: size, height: size };
+}
+
+export function createQrCanvas(url: string): HTMLCanvasElement {
+  const pixels = createQrPixels(url);
+  const canvas = document.createElement('canvas');
+  canvas.width = pixels.width;
+  canvas.height = pixels.height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('無法建立 QR Code 畫布。');
+  context.putImageData(new ImageData(pixels.data, pixels.width, pixels.height), 0, 0);
   return canvas;
 }
 
