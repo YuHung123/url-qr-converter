@@ -138,7 +138,13 @@ default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect
 
 ## 12. Git
 
-M2 feature commit 與最終 working tree 檢查於驗證通過後記錄。Commit message：`feat: add qr image to url decoding`。不納入 node_modules、dist、screenshots、下載樣本、暫存圖片或 scratch scripts。未建立 remote，未 push。
+- M2 feature commit：`79bbd515874e5bb22184878553eeafb5a221984e`。
+- Commit message：`feat: add qr image to url decoding`。
+- Feature commit 後 `git status --short` 無輸出，working tree 乾淨。
+- 本報告隨 feature commit 納入；後續僅以 `docs: record verified M2 commit` 記錄實際 hash，再確認 working tree 乾淨，不改寫 feature commit。
+- 沿用 baseline commit 的作者身分，僅透過 per-command Git 設定，不改全域設定。
+- 不納入 node_modules、dist、screenshots、下載樣本、暫存圖片或 scratch scripts；本次暫存驗證材料已移至系統 `/tmp`，專案內 `.vite/m2-verification` 已移除。
+- 未建立 remote，未 push。
 
 ## 13. Remaining M3 items
 
