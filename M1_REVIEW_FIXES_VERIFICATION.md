@@ -57,13 +57,13 @@ README 移除 SAT 父專案描述與多餘的 `cd url-qr-converter`，指令皆�
 
 開始時沒有 `.git` 或既有 Git history，已用 `git init -b main` 初始化桌面專案自己的 repository。
 
-- Baseline commit：待建立後由文件提交記錄實際 hash。
+- Baseline commit：`67c8de88d606691f6d069ced7dcfb1c8876e046b`。
 - Commit message：`feat: establish M1 url to qr baseline`
 - 正式追蹤內容：M0／M1 原始碼、review fixes、tests、README、三份驗證紀錄、授權、lockfile 與設定。
 - 不納入：node_modules、dist、舊 `.vite/`、下載 PNG、截圖、scratch scripts、secrets 或 OS 檔案。
 - 沒有建立 remote，沒有 push。
 
-baseline 本身包含本報告；建立後另以文件提交記錄 baseline hash，避免文件自我引用自身 commit hash。
+baseline 本身包含本報告；後續僅以 `docs: record verified M1 baseline commit` 提交記錄實際 baseline hash。原 baseline 不改寫，正式程式碼不變，工作樹保持乾淨。
 
 ## 8. Verification results
 
