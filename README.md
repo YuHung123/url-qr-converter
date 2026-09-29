@@ -1,120 +1,88 @@
-# URL ↔ QR Code
+# URL ↔ QR Code Converter
 
-個人使用的小型純前端工具，用於將個人網站、採訪與文章網址製作成 QR Code，或從 QR Code 圖片讀取網址，方便放入備審資料與作品集。
-
-**目前完成 M2 — QR Code Image → URL。** 支援 URL → QR Code + PNG Download，以及選擇 QR Code 圖片 → 本地解析網址 → Copy URL。
+小型純前端工具：將個人網站、文章與作品集網址轉為 QR Code，下載 PNG 放入 Word／PDF，或從 QR 圖片讀取網址並複製。V1 不需帳號或後端。
 
 ## 使用方式
 
-1. 在 `URL → QR Code` 輸入完整網址，例如 `https://example.com/article?id=123`。
-2. 按 **Generate QR Code**，成功後右側顯示 QR Code，輸入欄顯示實際編碼的標準化網址。
-3. 按 **Download PNG**，下載 `qr-code.png`，可插入 Word／PDF 文件。
+- **URL → QR Code**：輸入完整網址，按 **Generate QR Code**，再按 **Download PNG**。
+- **QR Code → URL**：選擇圖片，成功後按 **Copy URL**。剪貼簿不可用時，可在結果欄手動選取複製。
+- 修改網址或選擇新圖會清除舊結果。解析出的網址不會自動開啟，也不會建立可點擊連結。
 
-切換到 **QR Code → URL**，使用 **Choose QR Code Image**（瀏覽器的選擇檔案控制項）選取圖片。成功後顯示標準化網址，按 **Copy URL** 複製；若瀏覽器不允許剪貼簿存取，可在結果欄手動選取複製。僅接受 HTTP / HTTPS URL；不會顯示其他 QR payload，也不會自動開啟網址。
+只接受完整 **HTTP / HTTPS** URL。先去除首尾空白，再拒絕其餘空白／控制字元；`%20` 等百分比編碼可用。Unicode 網域與路徑會標準化為 punycode／百分比編碼。`example.com` 不會自動補上 HTTPS。格式驗證不代表網站存在或安全。
 
-只接受 `http://` 或 `https://` 且具有效主機名稱的網址。先去除首尾空白，拒絕剩餘的 raw whitespace 與 ASCII 控制字元，再由瀏覽器 `URL` parser 驗證並取得 `href`；`%20`、`%09` 等百分比編碼仍可用於路徑／query。例如根網址可能補上結尾 `/`，中文路徑會轉為百分比編碼。`example.com` 不會自動補成 HTTPS，空白、一般文字及 `javascript:`、`data:`、`file:` 等會顯示欄位錯誤。
+圖片請優先使用清晰的 **PNG、JPEG、WebP**；GIF／BMP 依瀏覽器支援。`image/*` 是選檔提示，不保證所有格式都可解析。SVG／HEIC／HEIF 請先自行轉為 PNG 或 JPEG；不含 SVG parser 或 HEIC decoder。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR。
 
-修改輸入會立即清除舊 QR 並停用下載；需再次按產生按鈕，不會隨輸入自動產生。網址不會被開啟或送至任何伺服器，亦不會驗證網站是否存在或安全。
+## 隱私
 
-這是一個完全獨立的小型 Web 專案，使用自己的 package.json 與 lockfile，不依賴任何父專案。
+**Images, URLs and decoded payloads are processed locally in your browser and are not uploaded.**
 
-## 安裝與開發
+沒有分析追蹤、cookies、localStorage、IndexedDB、Service Worker 或其他應用程式持久儲存。頁面載入時只取得網站自身的靜態資源；轉換流程不發送網路請求。結果留在目前頁面記憶體，重新載入即清除。下載 PNG 與複製網址由使用者主動觸發，檔案與系統剪貼簿可在頁面外保留。靜態主機自身的存取紀錄取決於部署設定。
 
-使用 Node.js 22.12 以上的受支援版本（建議 Node.js 24 LTS）及 npm。在本資料夾執行：
+## 開發
+
+使用 Node.js 22.12 以上的受支援版本及 npm，從本專案根目錄執行：
 
 ```sh
 npm ci
 npm run dev
 ```
 
-開啟終端機顯示的本機網址，預設為 `http://127.0.0.1:5173`。開發伺服器只供本機開發，不是產品後端。
+開發網址預設 `http://127.0.0.1:5173`。使用 Vite、strict TypeScript、原生 HTML/CSS；正式依賴只有 `qrcode-generator@2.0.4`（MIT）與 `jsqr@1.4.0`（Apache-2.0），無傳遞 runtime dependencies。授權見 [THIRD_PARTY_NOTICES](public/THIRD_PARTY_NOTICES.txt)。
+
+## 測試
 
 ```sh
-npm run typecheck
 npm test
-npm run build
-npm run preview
+npm run typecheck
+npx playwright install chromium firefox webkit
+npm run test:browser
+npm run test:artifact
+npm audit
+npm ls --omit=dev --all
 ```
 
-`build` 先執行 typecheck，再輸出 `dist/`。`preview` 預設使用 `http://127.0.0.1:4173`，供本機驗證正式產物。部署時將 `dist/` 放至靜態網站主機；資源使用相對路徑，支援個人網站的子目錄。使用 HTTP(S) 服務，不以直接開啟 `file://` 作為支援方式。
+Linux 若缺少瀏覽器系統函式庫，依 [Playwright 官方安裝說明](https://playwright.dev/docs/browsers#install-system-dependencies)使用 `npx playwright install --with-deps`；可能需要管理員權限。日常 Node 測試不需安裝 browser。
 
-## 技術與結構
+`test:browser` 自動建立正式 build，使用單一 worker 跑 Chromium、Firefox、WebKit；由 Playwright 管理 preview 的啟動與關閉，不重用已占用的 4173。只跑一種引擎可用 `npm run test:browser -- --project=firefox`。`test:artifact` 驗證最近的 `dist/`，請先 build。
 
-使用 Vite、TypeScript、原生 HTML/CSS，執行時套件只有 `qrcode-generator@2.0.4` 與 `jsqr@1.4.0`，沒有 UI 框架或額外狀態管理。
+瀏覽器測試包含功能、鍵盤、axe、responsive、真實 PNG 下載／再解析、獨立 encoder fixture、race、網路／儲存與效能記錄。輸出 JSON、截圖與失敗 trace 在忽略的 `test-results/`；效能與密度資料另存為各測試目錄中的 JSON，亦附於 report。沒有額外 E2E 框架。兩張 committed fixture 合計不到 1 KiB；生成方式見 [fixtures](tests/fixtures/README.md)。
 
-此 encoder 提供瀏覽器 ESM 與內建 TypeScript 型別，無執行時相依套件；加入前已查核官方 API、npm metadata 與發布紀錄。這是長期存在的 QR 實作，2.0.4 於 2025-08-07 發布修正，屬低頻維護。使用 `qrcode(0, 'M')`、`addData`、`make` 與矩陣 API，不使用其 HTML 字串輸出。參考：[官方 API](https://github.com/kazuhikoarase/qrcode-generator/blob/master/js/README.md)、[2.0.4 發布紀錄](https://github.com/kazuhikoarase/qrcode-generator/releases/tag/js2.0.4)。
+**Playwright WebKit is not the same as testing real Safari on macOS/iOS.** axe 亦不能代替螢幕閱讀器與人工驗收。實測結果與硬體限制見 [M3_VERIFICATION](M3_VERIFICATION.md) 及 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
+
+## Production 與部署
+
+```sh
+npm run build
+npm run preview -- --strictPort
+```
+
+`build` 先 typecheck，再產生 `dist/`；preview 預設 `http://127.0.0.1:4173`，完成後以 Ctrl+C 停止。將 **dist 的內容**放到提供 HTTPS 的靜態主機即可；相對資源路徑可放於子目錄。請透過 HTTP(S) 載入，不直接開啟 `file://`。
+
+正式 HTML 含嚴格 meta CSP：
 
 ```text
-url-qr-converter/
-├─ index.html          # 語意化介面與兩種模式
-├─ src/
-│  ├─ main.ts          # 模式切換、產生／下載／解析／複製與畫面狀態
-│  ├─ qr.ts            # URL 驗證、QR 矩陣繪製與 PNG 匯出
-│  ├─ decode.ts        # 本地圖片讀取、尺寸限制、pixel 解碼與 URL 驗證
-│  └─ styles.css       # 響應式版面與 focus 樣式
-├─ tests/qr.test.mjs   # Node 內建測試：網址規則、ASCII、PNG 匯出失敗
-├─ tests/decode.test.mjs # 真實 QR pixels、round trip、拒絕 payload、資源釋放
-├─ public/favicon.svg # 本機圖示
-├─ public/THIRD_PARTY_NOTICES.txt # 隨正式產物附上的 encoder／decoder 授權
-├─ vite.config.ts     # 相對資源路徑、正式 build 的 CSP
-├─ tsconfig.json      # strict TypeScript 設定
-├─ package.json
-├─ package-lock.json
-└─ README.md
+default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'
 ```
 
-Decoder 使用 [jsQR 官方套件](https://github.com/cozmo/jsQR) `1.4.0`（Apache-2.0），直接接受 RGBA buffer，不含執行時相依套件、WASM、Worker 或遠端 API。加入前查核 [npm metadata](https://registry.npmjs.org/jsqr)：latest 為 1.4.0，發布於 2021-04-24，發布已久、維護活躍度有限。其純 JS API 適合本工具；版本固定並以整合測試保護目前功能。完整授權保留在 `public/THIRD_PARTY_NOTICES.txt`，build 自動複製至 dist。
+[public/_headers](public/_headers) 會複製至 dist，HTTP CSP 與 meta 一致並額外加入 `frame-ancestors 'none'`；另設 `nosniff`、`no-referrer` 及停用 camera／microphone／geolocation。`frame-ancestors` 必須透過 HTTP header，不能靠 meta 生效。[MDN 說明](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/frame-ancestors)
 
-## QR 與 PNG
+`_headers` 可供 [Netlify](https://docs.netlify.com/manage/routing/headers/)／[Cloudflare Pages](https://developers.cloudflare.com/pages/configuration/headers/) 的靜態資源使用，**不會在所有主機自動生效**。其他主機需設定等價 HTTP headers；若放入既有網站子目錄，請將 `/*` 規則限縮到該工具路徑。實際部署後應檢查 response headers。
 
-固定使用 M 級錯誤修正、自動 QR 版本、Byte 模式、黑色方塊、不透明白底與四個模組寬的 quiet zone。編碼內容為標準化的 HTTP(S) URL，中文網域／路徑由 URL parser 轉為 ASCII 表示；送入 encoder 前會明確拒絕非 ASCII payload，避免 Byte 模式誤編碼。
+開發模式為了 Vite HMR 不注入正式 CSP。一般 `npm run preview` 有 meta CSP，但不自動讀 `_headers`；browser suite 的小型 preview wrapper 會載入此檔以驗證 HTTP headers。未部署或修改任何公開網站。
 
-Canvas 的每格使用整數像素，邊長為 `(模組數 + 8) × ceil(1024 / (模組數 + 8))`，因此至少 1024 × 1024，實際尺寸依網址長度略增並顯示在介面上。預覽以 CSS 縮小同一畫布，下載不縮小原始像素；PNG 為無損格式。放入文件時保留白邊，並依實際列印尺寸測試掃描。
+## 文件與掃描建議
 
-下載以同一 Canvas 的 `toBlob('image/png')` 匯出，確認 MIME／非空後建立暫存 Blob URL，透過固定檔名下載；URL 於 60 秒後釋放。匯出期間若輸入變更或重新產生，舊匯出結果直接捨棄。匯出失敗顯示可重試的錯誤，保留目前 QR。匯出中以 busy 狀態與 aria-disabled 阻擋重複操作，保留下載按鈕的鍵盤焦點。
+QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG 最少 1024 × 1024，每格為整數像素：`(modules + 8) × ceil(1024 / (modules + 8))`。下載保留原始尺寸；畫面預覽約 320 CSS px，窄螢幕會更小。當 QR 達 version 17（85 格）以上，介面會提示改用下載圖片並保留足夠尺寸。
 
-## 圖片解析
+插入 Word／PDF 時保持正方形與四周白邊，避免 JPEG 重壓縮、裁掉白邊或用模糊截圖取代 PNG。普通短網址可先以約 **3 cm** 正方形排版；較長網址需更大。保守起點為每格約 **0.5 mm**，含白邊總寬約 `(modules + 8) × 0.5 mm`，這是排版建議，不是所有印表機／手機的掃描保證。必須掃描最終 PDF 與實際列印版本。真實手機和列印掃描仍列於 manual checklist。
 
-使用 `File → createImageBitmap → temporary Canvas → ImageData → jsQR → normalizeUrl()`。`accept="image/*"` 僅為選檔提示，實際仍由瀏覽器讀取圖片及抽取像素。檔案上限 20 MiB；Canvas 保持長寬比且最長邊不超過 2048px，不放大小圖。透明背景先合成白底；jsQR 嘗試一般及反白 QR。只處理單張圖片的一個 QR。
+## 限制
 
-接受 payload 前，以原生 `TextDecoder` 的 fatal UTF-8 模式逐段驗證 Byte chunks；任何無法完整解讀的 Byte segment 都視為不支援的 URL，避免 jsQR 靜默省略內容後仍顯示成功。
+- 不提供相機掃描、裁切、批次、歷史紀錄、縮網址、自訂樣式、PWA 或後端。
+- 過長網址超出 QR 容量時會失敗；高密度 QR 在小預覽中可能難掃，請用下載圖片並放大。
+- 過低對比、嚴重模糊／透視、QR 太小、或過長截圖縮小後可能無法辨識。請裁出 QR 或使用清晰原圖。
+- 解碼先嘗試最長邊 768 px，找不到 QR 才重試最多 2048 px，不放大小圖；初始圖片解碼仍可能配置原圖記憶體，20 MiB 檔案限制並非所有 image bombs 的防護保證。jsQR 同步執行，大型／複雜影像或資源吃緊的裝置可能暫時阻塞介面；Windows WebKit 實測曾出現秒級停頓，詳見 M3 報告。
+- 只接受完整可驗證的 UTF-8 Byte segments；不支援所有 QR 字元編碼。jsQR 1.4.0 發布已久，固定版本並以測試保護。
+- Copy 需瀏覽器允許 Clipboard API（部署請用 HTTPS）；拒絕時可手動複製。
 
-選擇新圖片立即清除舊 URL 並停用 Copy；若 Copy 正持有焦點，停用前將焦點移至選圖控制項。操作代號保護非同步結果，舊解析與舊 Copy callback 不更新新狀態。解析完成不強制移動焦點，Copy busy 使用 `aria-disabled` 與 internal guard 阻擋重複操作。無效圖片、找不到 QR、不支援的 URL、解析失敗、檔案過大及複製失敗都有可見訊息。
-
-完成後關閉 ImageBitmap、清除暫存 Canvas，檔案 input 不保留選取檔案參考，可重選同一張圖片。不建立圖片 object URL。瀏覽器初始圖片解碼仍可能需要原圖記憶體；Canvas 尺寸限制不等於限制原始 bitmap 的記憶體。極大圖片或縮放後過小／模糊的 QR 可能無法解析；請使用清晰圖片。
-
-## 介面與可及性
-
-- 預設為 `URL → QR Code`；另一模式為 `QR Code → URL`。
-- 模式使用 tablist、tab、tabpanel、aria-selected、aria-controls 與單一 Tab 停駐點；左右方向鍵循環切換，Home/End 跳至首尾，Enter/Space 使用原生按鈕行為。
-- Tab 可進入目前面板及可用欄位，隱藏面板不參與焦點順序；提供跳至主要內容連結與清楚的 focus 外框。
-- 所有欄位具 label，限制說明透過 aria-describedby 關聯；結果初始為空、Copy 停用；解析狀態使用 status，錯誤使用 alert。
-- 網址錯誤具 aria-invalid、關聯文字及 alert；QR 產生／下載錯誤亦有 alert。產生成功以簡短 status 宣告，Canvas 有包含對應網址的 accessible name，不主動搬移焦點。
-- 桌面並排顯示輸入與結果；640px 以下改為單欄。使用系統字型，不載入外部字型或圖像。
-
-## 安全與隱私
-
-**Images and URLs are processed entirely in the browser and are not uploaded.**
-
-QR 編碼、PNG 匯出與圖片解碼全程在瀏覽器內完成，encoder／decoder 隨本地 bundle 載入。沒有第三方 QR API、遠端圖像、上傳、帳號、分析追蹤、資料庫、localStorage 或快取服務。網址與預覽只存在本次頁面狀態；PNG 僅由使用者主動下載。
-
-應用程式不使用 inline JavaScript、eval 或 HTML 字串插入。TypeScript 開啟 strict、索引存取檢查及未使用程式碼檢查。依賴與產物、環境檔不納入 Git；前端不得放入 secret 或 API key。
-
-正式 build 由 Vite 注入 meta CSP：預設禁止資源，僅允許同來源 script、style、image，禁止網路連線、表單提交、object 與 base URL 覆寫。M1 使用 Canvas 預覽，Blob URL 只供下載；M2 使用 createImageBitmap 與暫存 Canvas，因此 CSP 維持 M0 原樣，沒有新增 `blob:`／`data:` 圖像權限、wildcard 或 unsafe-inline。開發環境不套用正式 CSP，以保留 Vite 熱更新；正式產物另行驗證。Meta CSP 不提供 frame-ancestors 防護；部署端安全標頭留待 M3。
-
-## V1 里程碑
-
-- **M0 — Completed**：專案、模式切換與基本介面。
-- **M1 — Completed**：URL → QR Code + PNG Download。
-- **M2 — Completed**：QR Code Image → URL；選擇 QR Code 圖片、解析結果與複製網址。
-- **M3 — Testing, Security, Accessibility & Release**：測試、資安、無障礙與發布。
-
-V1 不包含相機掃描、拖放、剪貼簿圖片、SVG 匯出、QR 樣式與 Logo、歷史紀錄、縮網址、批次、PWA、離線快取或後端服務。
-
-## 驗證
-
-`npm test` 使用 Node 內建 test runner 與 TypeScript type stripping，不加入測試框架。29 項測試涵蓋既有 URL validation、ASCII invariant、hostname guard、PNG failure，以及四種 encode → render → decode round trip、空白圖、非 URL／禁止 scheme、decoder 例外、尺寸限制和 bitmap cleanup。另涵蓋 invalid UTF-8 多段 QR、合法 UTF-8、多段文字、raw control characters／whitespace、精確 20 MiB 邊界及 Canvas failure cleanup；見 [M2 review fixes 驗證紀錄](M2_REVIEW_FIXES_VERIFICATION.md)。
-
-正式 preview 的 Chrome 驗證涵蓋實際下載 PNG 再解析、真實 clipboard、Copy failure／focus、decode／Copy／Download race、圖片格式與縮放、四種 responsive 寬度、CSP／network／storage。詳細實際結果與限制見 [M2 驗證紀錄](M2_VERIFICATION.md)。
-
-[M0](M0_VERIFICATION.md)、[M1](M1_VERIFICATION.md)、[M1 review fixes](M1_REVIEW_FIXES_VERIFICATION.md) 保留為歷史紀錄。Firefox／Safari、實體裝置與列印掃描、螢幕閱讀器及公開部署驗收留待 M3，尚未宣稱完成。
+[CHANGELOG](CHANGELOG.md) · [Release checklist](RELEASE_CHECKLIST.md) · [M3 驗證](M3_VERIFICATION.md)。M0／M1／M2 驗證文件保留原始歷史結果。

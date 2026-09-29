@@ -102,6 +102,10 @@ generateButton.addEventListener('click', () => {
     generated = { url, canvas };
     downloadButton.disabled = false;
     status.textContent = `已產生 QR Code，可下載 ${canvas.width} × ${canvas.height} 像素的 PNG。`;
+    // Version 17+ drops below 3 CSS pixels/module in a narrow phone preview.
+    if (Number(canvas.dataset.modules) >= 85) {
+      status.textContent += ' 網址較長，QR Code 較密集；掃描或列印時請使用下載圖片，並保留足夠尺寸與白邊。';
+    }
   } catch {
     qrError.textContent = '無法產生 QR Code。網址可能過長，請縮短網址或重新嘗試。';
   }
@@ -183,7 +187,7 @@ imageInput.addEventListener('change', async () => {
     decodeStatus.textContent = '已解析網址，可複製或手動選取。';
   } else {
     const messages = {
-      'invalid-image': '無法將所選檔案讀取為圖片，請選擇有效的圖片檔。',
+      'invalid-image': '無法讀取此圖片格式或檔案已損壞。請改用 PNG、JPEG 或其他瀏覽器支援的點陣圖片。',
       'no-qr': '圖片中找不到可讀取的 QR Code。請選擇清晰的 QR Code 圖片。',
       'unsupported-url': '已找到 QR Code，但內容不是支援的完整 HTTP / HTTPS 網址。',
       'decode-failure': '無法解析此圖片，請重試或選擇另一張圖片。',

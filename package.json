@@ -1,7 +1,7 @@
 {
   "name": "url-qr-converter",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "在瀏覽器內將網址與 QR Code 圖片互轉的小型工具。",
   "type": "module",
   "engines": {
@@ -12,9 +12,13 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "npm run typecheck && vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test:browser": "npm run build && playwright test",
+    "test:artifact": "node --test tests/release/*.test.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "typescript": "~5.9.3",
     "vite": "~8.3.1"
   },

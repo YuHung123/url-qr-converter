@@ -80,3 +80,30 @@ test('直接檢查 hostname 額外字元規則，不依賴 URL parser 提前拒�
     assert.doesNotThrow(() => assertHostnameCharacters(hostname));
   }
 });
+
+test('download pixels keep four white modules and whole-pixel modules at short and dense versions', async () => {
+  const { createQrPixels } = await import('../src/qr.ts');
+  const { default: qrcode } = await import('qrcode-generator');
+  const { decodePixels } = await import('../src/decode.ts');
+  for (const length of [30, 200, 500, 1000, 1800]) {
+    const url = 'https://example.com/' + 'a'.repeat(length - 20);
+    const matrix = qrcode(0, 'M'); matrix.addData(url, 'Byte'); matrix.make();
+    const modules = matrix.getModuleCount();
+    const pixels = createQrPixels(url);
+    const scale = pixels.width / (modules + 8);
+    assert.deepEqual(decodePixels(pixels), { kind: 'success', url });
+    assert.ok(Number.isInteger(scale)); assert.ok(pixels.width >= 1024);
+    const dark = (x, y) => pixels.data[(y * pixels.width + x) * 4] === 0;
+    for (let i = 0; i < pixels.width; i++) {
+      for (const edge of [0, 4 * scale - 1, pixels.width - 4 * scale, pixels.width - 1]) {
+        assert.equal(dark(i, edge), false); assert.equal(dark(edge, i), false);
+      }
+    }
+    // The top-left finder has exactly seven black modules across its top edge.
+    for (let x = 4 * scale; x < 11 * scale; x++) {
+      assert.equal(dark(x, 4 * scale), true);
+      assert.equal(dark(x, 5 * scale - 1), true);
+    }
+    assert.equal(dark(11 * scale, 4 * scale), false);
+  }
+});

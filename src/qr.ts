@@ -32,7 +32,7 @@ export function assertHostnameCharacters(hostname: string): void {
   }
 }
 
-export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number } {
+export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number; modules: number } {
   // 此 encoder 的 Byte 模式不是 UTF-8；只接受已正規化的 ASCII URL。
   if (/[^\x00-\x7f]/u.test(url)) {
     throw new Error('QR Code 內容必須是已正規化的 ASCII 網址。');
@@ -57,7 +57,7 @@ export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuff
       }
     }
   }
-  return { data, width: size, height: size };
+  return { data, width: size, height: size, modules };
 }
 
 export function createQrCanvas(url: string): HTMLCanvasElement {
@@ -65,6 +65,7 @@ export function createQrCanvas(url: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = pixels.width;
   canvas.height = pixels.height;
+  canvas.dataset.modules = String(pixels.modules);
   const context = canvas.getContext('2d');
   if (!context) throw new Error('無法建立 QR Code 畫布。');
   context.putImageData(new ImageData(pixels.data, pixels.width, pixels.height), 0, 0);

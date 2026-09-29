@@ -33,8 +33,8 @@ export function decodePixels(pixels: { data: Uint8ClampedArray; width: number; h
   }
 }
 
-export function decodeDimensions(width: number, height: number): { width: number; height: number } {
-  const ratio = Math.min(1, 2048 / Math.max(width, height));
+export function decodeDimensions(width: number, height: number, maxDimension = 2048): { width: number; height: number } {
+  const ratio = Math.min(1, maxDimension / Math.max(width, height));
   return { width: Math.max(1, Math.round(width * ratio)), height: Math.max(1, Math.round(height * ratio)) };
 }
 
@@ -51,16 +51,23 @@ export async function decodeImage(file: File, isCurrent: () => boolean): Promise
   try {
     if (!isCurrent()) return { kind: 'stale' };
     canvas = document.createElement('canvas');
-    const size = decodeDimensions(bitmap.width, bitmap.height);
-    canvas.width = size.width;
-    canvas.height = size.height;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (!context) return { kind: 'decode-failure' };
-    // Composite transparent backgrounds onto white before extracting RGB.
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, size.width, size.height);
-    context.drawImage(bitmap, 0, 0, size.width, size.height);
-    return decodePixels(context.getImageData(0, 0, size.width, size.height));
+    // Most ordinary images decode at 768px. Retry at the original cap only
+    // when no QR was found, preserving small QR details in large screenshots.
+    const limits = Math.max(bitmap.width, bitmap.height) > 768 ? [768, 2048] : [768];
+    for (const limit of limits) {
+      const size = decodeDimensions(bitmap.width, bitmap.height, limit);
+      canvas.width = size.width;
+      canvas.height = size.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) return { kind: 'decode-failure' };
+      // Composite transparent backgrounds onto white before extracting RGB.
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, size.width, size.height);
+      context.drawImage(bitmap, 0, 0, size.width, size.height);
+      const result = decodePixels(context.getImageData(0, 0, size.width, size.height));
+      if (result.kind !== 'no-qr') return result;
+    }
+    return { kind: 'no-qr' };
   } catch {
     return { kind: 'decode-failure' };
   } finally {

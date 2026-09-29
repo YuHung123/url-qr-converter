@@ -11,7 +11,7 @@
     <title>URL ↔ QR Code</title>
   </head>
   <body>
-    <a class="skip-link" href="#converter">跳至轉換工具</a>
+    <a class="skip-link" tabindex="0" href="#converter">跳至轉換工具</a>
     <div class="page-shell">
       <header class="intro">
         <p class="eyebrow">簡單分享，自在轉換</p>
@@ -55,7 +55,7 @@
                 </div>
                 <p id="qr-status" class="field-hint" role="status" aria-atomic="true"></p>
                 <p id="qr-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <button id="download-button" class="button secondary-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
+                <button id="download-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
               </div>
             </div>
           </section>
@@ -69,15 +69,15 @@
               <div class="input-section">
                 <label for="qr-image">QR Code 圖片</label>
                 <input id="qr-image" name="qr-image" type="file" accept="image/*" aria-describedby="image-hint decode-note decode-error" />
-                <p id="image-hint" class="field-hint">選擇 PNG、JPEG、WebP 等瀏覽器可讀取的圖片（最大 20 MiB）。</p>
+                <p id="image-hint" class="field-hint">請用瀏覽器支援的點陣圖片，如 PNG、JPEG、WebP、GIF 或 BMP（最大 20 MiB）；SVG／HEIC 請先轉為 PNG 或 JPEG。</p>
                 <p id="decode-note" class="availability">只接受完整 HTTP / HTTPS 網址；圖片不會上傳。</p>
               </div>
               <div class="output-section">
                 <label for="decoded-url">解析結果 <span lang="en">URL</span></label>
-                <textarea id="decoded-url" rows="5" readonly placeholder="圖片中的網址將顯示於此" aria-describedby="result-hint decode-error"></textarea>
+                <textarea id="decoded-url" rows="5" readonly autocomplete="off" placeholder="圖片中的網址將顯示於此" aria-describedby="result-hint decode-error"></textarea>
                 <p id="result-hint" class="field-hint" role="status" aria-atomic="true">目前尚未解析圖片。</p>
                 <p id="decode-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <button id="copy-button" class="button secondary-button" type="button" disabled aria-describedby="result-hint decode-error">Copy URL</button>
+                <button id="copy-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="result-hint decode-error">Copy URL</button>
               </div>
             </div>
           </section>
