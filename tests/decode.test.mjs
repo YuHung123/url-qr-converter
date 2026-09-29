@@ -3,6 +3,45 @@ import test from 'node:test';
 import jsQR from 'jsqr';
 import { createQrPixels, normalizeUrl } from '../src/qr.ts';
 import { decodeDimensions, decodeImage, decodePixels } from '../src/decode.ts';
+import { byteQrPixels } from './byte-fixture.mjs';
+
+test('rejects a URL assembled after jsQR silently drops an invalid UTF-8 Byte segment', () => {
+  for (const invalid of [[0xe9], [0xc0, 0xaf], [0xed, 0xa0, 0x80], [0xf4, 0x90, 0x80, 0x80]]) {
+    const segments = [new TextEncoder().encode('https://example.com/'), invalid, new TextEncoder().encode('evil')];
+    const pixels = byteQrPixels(segments);
+    const code = jsQR(pixels.data, pixels.width, pixels.height);
+    assert.equal(code.data, 'https://example.com/evil');
+    assert.equal(code.chunks.length, 3);
+    assert.equal(code.chunks[1].type, 'byte');
+    assert.deepEqual(code.chunks[1].bytes, invalid);
+    assert.equal(code.chunks[1].text, '');
+    assert.equal(normalizeUrl(code.data), 'https://example.com/evil');
+    assert.deepEqual(decodePixels(pixels), { kind: 'unsupported-url' });
+  }
+});
+
+test('accepts complete UTF-8 Byte segments, including Unicode and multiple segments', () => {
+  for (const segments of [
+    ['https://example.com/ascii'],
+    ['https://例子.測試/採訪?q=😀'],
+    ['https://example.com/', '採訪', '?q=é😀'],
+    ['https://example.com/', 'one', '/two'],
+  ]) {
+    const pixels = byteQrPixels(segments.map(text => new TextEncoder().encode(text)));
+    const code = jsQR(pixels.data, pixels.width, pixels.height);
+    assert.equal(code.data, segments.join(''));
+    assert.equal(code.chunks.length, segments.length);
+    assert.deepEqual(decodePixels(pixels), { kind: 'success', url: normalizeUrl(segments.join('')) });
+  }
+});
+
+for (const payload of ['https://exa\tmple.com/', 'https://example.com/a\nb', 'https://example.com/a\rb']) {
+  test(`rejects raw control characters in a readable QR: ${JSON.stringify(payload)}`, () => {
+    const pixels = createQrPixels(payload);
+    assert.equal(jsQR(pixels.data, pixels.width, pixels.height).data, payload);
+    assert.deepEqual(decodePixels(pixels), { kind: 'unsupported-url' });
+  });
+}
 
 for (const input of [
   'https://example.com',
@@ -49,17 +88,49 @@ test('image dimensions preserve aspect ratio, cap at 2048, and do not upscale', 
   assert.deepEqual(decodeDimensions(100000, 1), { width: 2048, height: 1 });
 });
 
-test('invalid image, file limit, stale bitmap cleanup, and canvas failure cleanup', async t => {
+test('invalid image, exact file size boundaries, and stale bitmap cleanup', async t => {
   let closed = 0;
-  const original = globalThis.createImageBitmap;
-  t.after(() => { if (original) globalThis.createImageBitmap = original; else delete globalThis.createImageBitmap; });
-  globalThis.createImageBitmap = async () => { throw new Error('internal error'); };
+  let reads = 0;
+  const original = Object.getOwnPropertyDescriptor(globalThis, 'createImageBitmap');
+  t.after(() => { if (original) Object.defineProperty(globalThis, 'createImageBitmap', original); else delete globalThis.createImageBitmap; });
+  globalThis.createImageBitmap = async () => { reads++; throw new Error('internal error'); };
   assert.deepEqual(await decodeImage(new File(['bad'], 'bad.png'), () => true), { kind: 'invalid-image' });
-  assert.deepEqual(await decodeImage({ size: 21 * 1024 * 1024 }, () => true), { kind: 'too-large' });
+  assert.equal(reads, 1);
+  assert.deepEqual(await decodeImage({ size: 20 * 1024 * 1024 }, () => true), { kind: 'invalid-image' });
+  assert.equal(reads, 2, 'exactly 20 MiB reaches image processing');
+  assert.deepEqual(await decodeImage({ size: 20 * 1024 * 1024 + 1 }, () => true), { kind: 'too-large' });
+  assert.equal(reads, 2, '20 MiB + 1 is rejected before reading');
   globalThis.createImageBitmap = async () => ({ width: 100, height: 100, close() { closed++; } });
   assert.deepEqual(await decodeImage(new File(['x'], 'x.png'), () => false), { kind: 'stale' });
   assert.equal(closed, 1);
-  // No DOM in Node: canvas creation fails, but the bitmap is still closed.
-  assert.deepEqual(await decodeImage(new File(['x'], 'x.png'), () => true), { kind: 'decode-failure' });
-  assert.equal(closed, 2);
 });
+
+for (const failure of ['getContext', 'drawImage']) {
+  test(`${failure} failure closes bitmap and clears the allocated canvas`, async t => {
+    const originals = ['document', 'createImageBitmap'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
+    t.after(() => {
+      for (const [key, descriptor] of originals) {
+        if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+        else delete globalThis[key];
+      }
+    });
+    let closed = 0;
+    let reachedFailure = false;
+    const canvas = {
+      width: 0, height: 0,
+      getContext() {
+        assert.equal(canvas.width, 100);
+        assert.equal(canvas.height, 100);
+        if (failure === 'getContext') { reachedFailure = true; return null; }
+        return { fillRect() {}, drawImage() { reachedFailure = true; throw new Error('draw failed'); } };
+      },
+    };
+    globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return canvas; } };
+    globalThis.createImageBitmap = async () => ({ width: 100, height: 100, close() { closed++; } });
+    assert.deepEqual(await decodeImage({ size: 1 }, () => true), { kind: 'decode-failure' });
+    assert.equal(reachedFailure, true);
+    assert.equal(closed, 1);
+    assert.equal(canvas.width, 0);
+    assert.equal(canvas.height, 0);
+  });
+}

@@ -10,6 +10,18 @@ export function decodePixels(pixels: { data: Uint8ClampedArray; width: number; h
   try {
     const code = jsQR(pixels.data, pixels.width, pixels.height, { inversionAttempts: 'attemptBoth' });
     if (!code) return { kind: 'no-qr' };
+    // jsQR keeps invalid Byte bytes but silently omits their text from data.
+    // Validate each segment independently; never accept that partial payload.
+    try {
+      const utf8 = new TextDecoder('utf-8', { fatal: true });
+      for (const chunk of code.chunks) {
+        if (chunk.type !== 'byte') continue;
+        if (!('bytes' in chunk)) return { kind: 'unsupported-url' };
+        utf8.decode(Uint8Array.from(chunk.bytes));
+      }
+    } catch {
+      return { kind: 'unsupported-url' };
+    }
     payload = code.data;
   } catch {
     return { kind: 'decode-failure' };

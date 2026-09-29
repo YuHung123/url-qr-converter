@@ -3,6 +3,10 @@ import qrcode from 'qrcode-generator';
 export function normalizeUrl(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) throw new Error('請輸入網址。');
+  // Reject raw characters before URL parsing can remove or encode them.
+  if (/[\x00-\x20\x7f\s]/u.test(trimmed)) {
+    throw new Error('網址中不可包含空白或控制字元，請使用百分比編碼。');
+  }
 
   let url: URL;
   try {

@@ -12,7 +12,7 @@
 
 切換到 **QR Code → URL**，使用 **Choose QR Code Image**（瀏覽器的選擇檔案控制項）選取圖片。成功後顯示標準化網址，按 **Copy URL** 複製；若瀏覽器不允許剪貼簿存取，可在結果欄手動選取複製。僅接受 HTTP / HTTPS URL；不會顯示其他 QR payload，也不會自動開啟網址。
 
-只接受 `http://` 或 `https://` 且具有效主機名稱的網址。先去除首尾空白，再由瀏覽器 `URL` parser 驗證並取得 `href`；例如根網址可能補上結尾 `/`，中文路徑會轉為百分比編碼。`example.com` 不會自動補成 HTTPS，空白、一般文字及 `javascript:`、`data:`、`file:` 等會顯示欄位錯誤。
+只接受 `http://` 或 `https://` 且具有效主機名稱的網址。先去除首尾空白，拒絕剩餘的 raw whitespace 與 ASCII 控制字元，再由瀏覽器 `URL` parser 驗證並取得 `href`；`%20`、`%09` 等百分比編碼仍可用於路徑／query。例如根網址可能補上結尾 `/`，中文路徑會轉為百分比編碼。`example.com` 不會自動補成 HTTPS，空白、一般文字及 `javascript:`、`data:`、`file:` 等會顯示欄位錯誤。
 
 修改輸入會立即清除舊 QR 並停用下載；需再次按產生按鈕，不會隨輸入自動產生。網址不會被開啟或送至任何伺服器，亦不會驗證網站是否存在或安全。
 
@@ -77,7 +77,9 @@ Canvas 的每格使用整數像素，邊長為 `(模組數 + 8) × ceil(1024 / (
 
 使用 `File → createImageBitmap → temporary Canvas → ImageData → jsQR → normalizeUrl()`。`accept="image/*"` 僅為選檔提示，實際仍由瀏覽器讀取圖片及抽取像素。檔案上限 20 MiB；Canvas 保持長寬比且最長邊不超過 2048px，不放大小圖。透明背景先合成白底；jsQR 嘗試一般及反白 QR。只處理單張圖片的一個 QR。
 
-選擇新圖片立即清除舊 URL 並停用 Copy；操作代號保護非同步結果，舊解析與舊 Copy callback 不更新新狀態。解析不強制移動焦點，Copy busy 使用 `aria-disabled` 與 internal guard 阻擋重複操作。無效圖片、找不到 QR、不支援的 URL、解析失敗、檔案過大及複製失敗都有可見訊息。
+接受 payload 前，以原生 `TextDecoder` 的 fatal UTF-8 模式逐段驗證 Byte chunks；任何無法完整解讀的 Byte segment 都視為不支援的 URL，避免 jsQR 靜默省略內容後仍顯示成功。
+
+選擇新圖片立即清除舊 URL 並停用 Copy；若 Copy 正持有焦點，停用前將焦點移至選圖控制項。操作代號保護非同步結果，舊解析與舊 Copy callback 不更新新狀態。解析完成不強制移動焦點，Copy busy 使用 `aria-disabled` 與 internal guard 阻擋重複操作。無效圖片、找不到 QR、不支援的 URL、解析失敗、檔案過大及複製失敗都有可見訊息。
 
 完成後關閉 ImageBitmap、清除暫存 Canvas，檔案 input 不保留選取檔案參考，可重選同一張圖片。不建立圖片 object URL。瀏覽器初始圖片解碼仍可能需要原圖記憶體；Canvas 尺寸限制不等於限制原始 bitmap 的記憶體。極大圖片或縮放後過小／模糊的 QR 可能無法解析；請使用清晰圖片。
 
@@ -111,7 +113,7 @@ V1 不包含相機掃描、拖放、剪貼簿圖片、SVG 匯出、QR 樣式與 
 
 ## 驗證
 
-`npm test` 使用 Node 內建 test runner 與 TypeScript type stripping，不加入測試框架。20 項測試涵蓋既有 URL validation、ASCII invariant、hostname guard、PNG failure，以及四種 encode → render → decode round trip、空白圖、非 URL／禁止 scheme、decoder 例外、尺寸限制和 bitmap cleanup。
+`npm test` 使用 Node 內建 test runner 與 TypeScript type stripping，不加入測試框架。29 項測試涵蓋既有 URL validation、ASCII invariant、hostname guard、PNG failure，以及四種 encode → render → decode round trip、空白圖、非 URL／禁止 scheme、decoder 例外、尺寸限制和 bitmap cleanup。另涵蓋 invalid UTF-8 多段 QR、合法 UTF-8、多段文字、raw control characters／whitespace、精確 20 MiB 邊界及 Canvas failure cleanup；見 [M2 review fixes 驗證紀錄](M2_REVIEW_FIXES_VERIFICATION.md)。
 
 正式 preview 的 Chrome 驗證涵蓋實際下載 PNG 再解析、真實 clipboard、Copy failure／focus、decode／Copy／Download race、圖片格式與縮放、四種 responsive 寬度、CSP／network／storage。詳細實際結果與限制見 [M2 驗證紀錄](M2_VERIFICATION.md)。
 

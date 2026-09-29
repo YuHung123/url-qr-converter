@@ -164,6 +164,8 @@ imageInput.addEventListener('change', async () => {
   imageInput.value = '';
   currentUrl = decodedUrl.value = '';
   copyBusy = false;
+  // Native disabling a focused button can send keyboard focus to <body>.
+  if (document.activeElement === copyButton) imageInput.focus();
   copyButton.disabled = true;
   copyButton.removeAttribute('aria-disabled');
   copyButton.textContent = 'Copy URL';

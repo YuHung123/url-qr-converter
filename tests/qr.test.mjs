@@ -2,6 +2,25 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assertHostnameCharacters, createQrCanvas, exportPng, normalizeUrl } from '../src/qr.ts';
 
+test('拒絕 trim 後剩餘的 raw control characters 與 whitespace，避免 parser 改寫內容', () => {
+  const characters = [...Array.from({ length: 33 }, (_, i) => String.fromCharCode(i)), '\x7f', '\u00a0', '\u2003', '\u2028', '\u2029', '\ufeff'];
+  for (const character of characters) {
+    for (const input of [`https://exa${character}mple.com/`, `https://example.com/a${character}b`, `https://example.com/?q=a${character}b`]) {
+      assert.throws(() => normalizeUrl(input), Error, JSON.stringify(input));
+    }
+  }
+  assert.throws(() => normalizeUrl('https://example.com/\nhttps://other.example/'), Error);
+});
+
+test('保留 trim、percent-encoded whitespace、Unicode 與有效 hostname', () => {
+  for (const [input, expected] of [
+    [' \t\r\nhttps://example.com/\n\t ', 'https://example.com/'],
+    ['https://example.com/a%20b?q=%09', 'https://example.com/a%20b?q=%09'],
+    ['https://example.com/採訪?q=😀', 'https://example.com/%E6%8E%A1%E8%A8%AA?q=%F0%9F%98%80'],
+    ...['example.com', 'xn--fsqu00a.xn--g6w251d', 'localhost', '127.0.0.1', '[::1]'].map(host => [`http://${host}`, `http://${host}/`]),
+  ]) assert.equal(normalizeUrl(input), expected);
+});
+
 test('接受完整 HTTP(S) URL，trim 後回傳標準化網址', () => {
   for (const [input, expected] of [
     ['  https://example.com  ', 'https://example.com/'],
