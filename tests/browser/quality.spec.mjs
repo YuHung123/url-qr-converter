@@ -146,7 +146,7 @@ test('screen preview density assessment at 320 and 246 CSS pixels', async ({ pag
   await attachJson(info, 'density', rows);
 });
 
-test('text, focus and input boundaries have sufficient contrast', async ({ page }) => {
+test('text, focus, input boundaries and selected tabs have sufficient contrast', async ({ page }, info) => {
   await page.goto('/');
   const ratios = await page.evaluate(() => {
     const luminance = color => {
@@ -163,4 +163,45 @@ test('text, focus and input boundaries have sufficient contrast', async ({ page 
   for (const key of ['text', 'hint', 'error']) expect(ratios[key]).toBeGreaterThanOrEqual(4.5);
   await page.locator('#url-input').focus(); await page.keyboard.press('Tab');
   expect(await page.locator('#generate-button').evaluate(el => el.matches(':focus-visible') && getComputedStyle(el).outlineStyle !== 'none')).toBe(true);
+  const indicators = [];
+  for (const width of [1280, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    const bounds = async () => Promise.all(['encode', 'decode'].map(id => page.locator(`#${id}-tab`).boundingBox()));
+    const before = await bounds();
+    await page.locator('#encode-tab').focus();
+    for (const [key, id] of [['End', 'decode'], ['Home', 'encode']]) {
+      await page.keyboard.press(key);
+      const selected = page.locator(`#${id}-tab`);
+      await expect(selected).toHaveAttribute('aria-selected', 'true');
+      await expect(selected).toBeFocused();
+      for (const hover of [false, true]) {
+        if (hover) await selected.hover();
+        else await page.mouse.move(0, 0);
+        const indicator = await selected.evaluate(el => {
+          const style = getComputedStyle(el);
+          const color = style.boxShadow.match(/rgba?\([^)]+\)/)?.[0];
+          const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number)
+            .map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+            .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+          const ratio = background => (Math.max(luminance(color), luminance(background)) + 0.05) / (Math.min(luminance(color), luminance(background)) + 0.05);
+          const backgrounds = [style.backgroundColor, getComputedStyle(el.parentElement).backgroundColor, style.borderBottomColor];
+          const other = getComputedStyle(el.parentElement.querySelector('[aria-selected="false"]'));
+          return { color, backgrounds, ratios: color ? backgrounds.map(ratio) : [], shadow: style.boxShadow,
+            otherShadow: other.boxShadow, focus: el.matches(':focus-visible'), outline: style.outlineWidth, offset: style.outlineOffset };
+        });
+        expect(indicator.shadow).toContain('inset');
+        expect(indicator.shadow).toContain('0px -3px 0px');
+        expect(indicator.ratios).toHaveLength(3);
+        for (const ratio of indicator.ratios) expect(ratio).toBeGreaterThanOrEqual(3);
+        expect(indicator.otherShadow).toBe('none');
+        expect(indicator.focus).toBe(true);
+        expect(indicator.outline).toBe('3px');
+        expect(indicator.offset).toBe('4px');
+        expect(await bounds()).toEqual(before);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        indicators.push({ width, id, hover, ...indicator });
+      }
+    }
+  }
+  await attachJson(info, 'selected-tab-contrast', indicators);
 });

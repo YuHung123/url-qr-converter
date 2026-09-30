@@ -1,23 +1,25 @@
-# Release checklist — v1.0.0
+# Release checklist — v1.0.1
 
-本機 release baseline；不包含公開部署。實際執行結果見 [M3_VERIFICATION](M3_VERIFICATION.md)。
+本機 release baseline；不包含公開部署。實際執行結果見 [V1_0_1_VERIFICATION](V1_0_1_VERIFICATION.md)；[v1.0.0 audit](V1_RELEASE_AUDIT.md) 保留歷史 findings。
 `PASS WITH NOTE` 表示有已記錄的限制；`NOT VERIFIED` 絕不等於通過。
 
 ## Automated
 
-在乾淨 checkout、支援的 Node/npm 及已安裝 Playwright browsers 的環境：
+v1.0.0 的 Windows default fresh clone 曾因 CRLF 失敗（audit I-1），舊 claim 由本次實測取代。
+v1.0.1 在目前工作目錄及 repository 外、Windows Git `core.autocrlf=true` 的全新 clone 驗證；需要支援的 Node/npm 及已安裝 Playwright browsers。
+兩邊全套 gates 均已通過（各 30 Node、4 artifact、48 browser）；fresh clone 的 `_headers` 為 `i/lf w/lf attr/text eol=lf`。首輪環境 timeout 與最終完整重跑證據見 v1.0.1 報告。
 
 - [x] `npm ci`
-- [x] `npm test`：原有 29 項全部保留；UTF-8／control characters 正常拒絕。
+- [x] `npm test`：30 項 product tests 全部保留；UTF-8／control characters 正常拒絕。
 - [x] `npm run typecheck`
 - [x] `npm run build`
-- [x] `npm run test:artifact`：CSP／headers／notices、精簡正式依賴、無 source map／test fixture。
+- [x] `npm run test:artifact`：4 項，含 LF／CRLF parser 與 tracked／checkout／dist LF、CSP／headers／notices、精簡正式依賴、無 source map／test fixture。
 - [x] `npm run test:browser`：Chromium、Firefox、Playwright WebKit，正式 build。
 - [x] `npm audit`：零已知漏洞；`npm ls --omit=dev --all` 只有 encoder／decoder。
 - [x] `git diff --check` 及 `git diff --cached --check`。
-- [x] `package.json`／lockfile 版本一致為 `1.0.0`。
+- [x] `package.json`／lockfile 版本一致為 `1.0.1`。
 - [x] 測試結束後 4173／5173 無本專案 listener。
-- [x] release commit、乾淨 working tree，再建立本機 annotated `v1.0.0` tag。
+- [x] release commit、乾淨 working tree，再建立本機 annotated `v1.0.1` tag；原 `v1.0.0` target 不變。
 - [x] `git remote -v` 為空；沒有 push、GitHub Release 或部署。
 
 Browser 安裝：`npx playwright install chromium firefox webkit`。
@@ -25,7 +27,7 @@ Playwright WebKit is not the same as testing real Safari on macOS/iOS.
 
 ## Manual
 
-下列硬體／平台項目此次皆為 **NOT VERIFIED**；依 M3 acceptance contract，
+下列硬體／平台項目此次皆為 **NOT VERIFIED**；依本次 patch acceptance contract，
 不阻擋有誠實限制說明的本機 release baseline。正式使用前應完成適用項目：
 
 - [ ] **NOT VERIFIED — real phone scan**：掃描短／中／長網址的畫面與下載 PNG，核對完整 path/query。

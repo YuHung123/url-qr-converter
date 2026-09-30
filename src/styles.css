@@ -43,7 +43,7 @@ h1 { margin: 10px 0 14px; font-size: clamp(2rem, 6vw, 3.25rem); line-height: 1.2
 .privacy-note { margin-top: 8px; color: var(--muted); font-size: 0.875rem; }
 .mode-switch { display: flex; width: fit-content; max-width: 100%; padding: 5px; gap: 5px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 10px; background: #eaeee8; }
 .mode-switch button { min-height: 44px; padding: 10px 23px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; }
-.mode-switch button[aria-selected="true"] { color: var(--accent); background: white; border-color: var(--border); box-shadow: 0 1px 3px #202d2a0a; }
+.mode-switch button[aria-selected="true"] { color: var(--accent); background: white; border-color: var(--border); box-shadow: inset 0 -3px 0 var(--accent), 0 1px 3px #202d2a0a; }
 .mode-switch button:hover { color: var(--accent); background: #f9faf8; }
 .workspace { border: 1px solid var(--border); border-radius: 16px; background: white; box-shadow: 0 8px 28px #202d2a04; overflow-wrap: anywhere; }
 .milestone-note { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 17px 30px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; }

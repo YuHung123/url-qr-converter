@@ -47,7 +47,7 @@ Linux 若缺少瀏覽器系統函式庫，依 [Playwright 官方安裝說明](ht
 
 瀏覽器測試包含功能、鍵盤、axe、responsive、真實 PNG 下載／再解析、獨立 encoder fixture、race、網路／儲存與效能記錄。輸出 JSON、截圖與失敗 trace 在忽略的 `test-results/`；效能與密度資料另存為各測試目錄中的 JSON，亦附於 report。沒有額外 E2E 框架。兩張 committed fixture 合計不到 1 KiB；生成方式見 [fixtures](tests/fixtures/README.md)。
 
-**Playwright WebKit is not the same as testing real Safari on macOS/iOS.** axe 亦不能代替螢幕閱讀器與人工驗收。實測結果與硬體限制見 [M3_VERIFICATION](M3_VERIFICATION.md) 及 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
+**Playwright WebKit is not the same as testing real Safari on macOS/iOS.** axe 亦不能代替螢幕閱讀器與人工驗收。v1.0.1 實測結果與硬體限制見 [V1_0_1_VERIFICATION](V1_0_1_VERIFICATION.md) 及 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
 
 ## Production 與部署
 
@@ -85,4 +85,4 @@ QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG
 - 只接受完整可驗證的 UTF-8 Byte segments；不支援所有 QR 字元編碼。jsQR 1.4.0 發布已久，固定版本並以測試保護。
 - Copy 需瀏覽器允許 Clipboard API（部署請用 HTTPS）；拒絕時可手動複製。
 
-[CHANGELOG](CHANGELOG.md) · [Release checklist](RELEASE_CHECKLIST.md) · [M3 驗證](M3_VERIFICATION.md)。M0／M1／M2 驗證文件保留原始歷史結果。
+[CHANGELOG](CHANGELOG.md) · [Release checklist](RELEASE_CHECKLIST.md) · [v1.0.1 驗證](V1_0_1_VERIFICATION.md) · [v1.0.0 獨立審查](V1_RELEASE_AUDIT.md)。M0／M1／M2／M3 驗證文件與 v1.0.0 audit 保留原始歷史結果。
