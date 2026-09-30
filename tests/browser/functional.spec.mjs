@@ -28,8 +28,8 @@ test('M1 HTTP, HTTPS, path/query, Unicode: generate, keyboard download, M2 round
   }
 });
 
-test('M1 invalid inputs, capacity failure, recovery and input clears export', async ({ page }) => {
-  for (const input of ['', 'example.com', 'javascript:alert(1)', 'https://exa mple.com/', 'https://']) {
+test('M1 invalid inputs, capacity failure, recovery and editing retains preview', async ({ page }) => {
+  for (const input of ['', '/article', 'javascript:alert(1)', 'https://exa mple.com/', 'https://']) {
     await page.locator('#url-input').fill(input); await page.locator('#generate-button').click();
     await expect(page.locator('#url-error')).not.toBeEmpty();
     await expect(page.locator('#url-input')).toHaveAttribute('aria-invalid', 'true');
@@ -39,7 +39,8 @@ test('M1 invalid inputs, capacity failure, recovery and input clears export', as
   await page.locator('#generate-button').click(); await expect(page.locator('#qr-error')).not.toBeEmpty();
   await encode(page, externalUrl);
   await page.locator('#url-input').fill('https://example.com/changed');
-  await expect(page.locator('canvas')).toHaveCount(0); await expect(page.locator('#download-button')).toBeDisabled();
+  await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${externalUrl} 的 QR Code`); await expect(page.locator('#download-button')).toBeEnabled();
+  await expect(page.locator('#qr-status')).toContainText('網址已修改');
 });
 
 test('M2 independent encoder, real clipboard write, keyboard Copy and failure', async ({ page, context, browserName }, info) => {
@@ -69,7 +70,7 @@ test('M2 unsupported text/schemes, invalid UTF-8 and raw controls never become U
     ['https://example.com/', [0xe9], 'evil'], ['https://exa\tmple.com/'], ['https://example.com/a\nb'], ['https://example.com/a\rb'],
   ]) {
     await choose(page, await qrFile(page, segments), null);
-    await expect(page.locator('#decode-error')).toContainText('不是支援');
+    await expect(page.locator('#decode-error')).toContainText('不是網址');
     await expect(page.locator('#decoded-url')).toHaveValue(''); await expect(page.locator('#copy-button')).toBeDisabled();
   }
   await choose(page, fixture('independent-ascii'));
@@ -127,7 +128,7 @@ test('stale PNG export cannot download; export failure recovers and retains focu
   });
   await page.locator('#download-button').focus(); await page.keyboard.press('Enter'); await page.keyboard.press('Space');
   await expect(page.locator('#download-button')).toBeFocused(); await expect(page.locator('#download-button')).toHaveAttribute('aria-disabled', 'true');
-  await page.locator('#url-input').fill('https://example.com/new'); await page.evaluate(() => window.finishExport());
+  await encode(page, 'https://example.com/new'); await page.evaluate(() => window.finishExport());
   expect(await page.evaluate(() => window.createdDownloads)).toBe(0); await encode(page, externalUrl);
   await page.evaluate(() => { HTMLCanvasElement.prototype.toBlob = callback => callback(null); });
   await page.locator('#download-button').focus(); await page.keyboard.press('Enter');

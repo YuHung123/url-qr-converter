@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import jsQR from 'jsqr';
 import qrcode from 'qrcode-generator';
-import { fixture, externalUrl, encode, choose, imageVariant, observeDecode, attachJson } from './helpers.mjs';
+import { fixture, externalUrl, encode, choose, qrFile, imageVariant, observeDecode, attachJson } from './helpers.mjs';
 
 for (const mode of ['encode', 'decode']) {
   test(`accessibility axe: ${mode} initial, error and success`, async ({ page }) => {
@@ -21,6 +21,7 @@ for (const mode of ['encode', 'decode']) {
       await scan(); await choose(page, fixture('independent-ascii'));
     }
     await scan();
+    if (mode === 'encode') { await page.locator('#download-toggle').click(); await scan(); }
   });
 }
 
@@ -52,7 +53,7 @@ test('keyboard tab semantics, focus-visible, hidden panel errors and async live 
   await page.locator('#qr-image').setInputFiles(fixture('independent-ascii'));
   await page.locator('#encode-tab').click(); await page.evaluate(() => window.finishHidden());
   await expect(page.locator('#decoded-url')).toHaveValue(externalUrl);
-  expect(await page.locator('body').ariaSnapshot()).not.toContain('已解析網址');
+  expect(await page.locator('body').ariaSnapshot()).not.toContain('已找到網址');
   await expect(page.locator('#encode-tab')).toBeFocused();
 });
 
@@ -62,13 +63,22 @@ test('responsive widths, long content, square QR and 200 percent reflow', async 
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#encode-tab').click(); await encode(page, `https://example.com/${'portfolio-'.repeat(80)}`);
     const box = await page.locator('canvas').boundingBox(); expect(Math.abs(box.width - box.height)).toBeLessThan(1);
+    expect(box.width).toBeLessThanOrEqual(width <= 640 ? 200 : 240);
+    await page.locator('#download-toggle').click();
+    const menu = await page.locator('#download-menu').boundingBox();
+    expect(menu.x).toBeGreaterThanOrEqual(0); expect(menu.x + menu.width).toBeLessThanOrEqual(width);
+    if ([1440, 320].includes(width)) await page.screenshot({ path: info.outputPath(`menu-${width}.png`), fullPage: true });
+    await page.keyboard.press('Escape');
     if ([1440, 320].includes(width)) await page.screenshot({ path: info.outputPath(`encode-${width}.png`), fullPage: true });
     for (const mode of ['encode', 'decode']) {
       await page.locator(`#${mode}-tab`).click();
-      if (mode === 'decode') await choose(page, fixture('independent-unicode'), new URL('https://例子.測試/採訪?q=😀').href);
+      if (mode === 'decode') await choose(page, await qrFile(page, [`https://example.com/${'long-path-'.repeat(70)}?q=1`]), `https://example.com/${'long-path-'.repeat(70)}?q=1`);
+      if (mode === 'decode' && [1440, 320].includes(width)) await page.screenshot({ path: info.outputPath(`decode-success-${width}.png`), fullPage: true });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-      for (const el of await page.locator(`#${mode}-panel input, #${mode}-panel textarea, #${mode}-panel button`).all()) {
+      for (const el of await page.locator(`#${mode}-panel input, #${mode}-panel textarea, #${mode}-panel button, #${mode}-panel a`).all()) {
+        if (!await el.isVisible()) continue;
         const b = await el.boundingBox(); expect(b.x).toBeGreaterThanOrEqual(0); expect(b.x + b.width).toBeLessThanOrEqual(width);
+        if (await el.evaluate(el => el.matches('button, a'))) expect(b.height).toBeGreaterThanOrEqual(44);
       }
     }
     await choose(page, { name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('bad') }, null);
@@ -81,6 +91,8 @@ test('responsive widths, long content, square QR and 200 percent reflow', async 
   await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
   for (const mode of ['encode', 'decode']) {
     await page.locator(`#${mode}-tab`).click();
+    if (mode === 'decode') await choose(page, fixture('independent-ascii'));
+    else { await page.locator('#download-toggle').click(); await page.keyboard.press('Escape'); }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: info.outputPath(`${mode}-text-200.png`), fullPage: true });
   }
@@ -121,7 +133,7 @@ test(`independent image corpus ${group}: measured performance/Canvas bounds`, as
 });
 }
 
-test('screen preview density assessment at 320 and 246 CSS pixels', async ({ page }, info) => {
+test('screen preview density assessment at 240 and 200 CSS pixels', async ({ page }, info) => {
   await page.goto('/'); const rows = [];
   for (const length of [30, 200, 500, 1000, 1800]) {
     const url = 'https://example.com/' + 'a'.repeat(length - 20);
@@ -130,7 +142,7 @@ test('screen preview density assessment at 320 and 246 CSS pixels', async ({ pag
     const modules = qr.getModuleCount();
     if (modules >= 85) await expect(page.locator('#qr-status')).toContainText('QR Code 較密集');
     else await expect(page.locator('#qr-status')).not.toContainText('QR Code 較密集');
-    for (const size of [320, 246]) {
+    for (const size of [240, 200]) {
       const pixels = await page.locator('canvas').evaluate((canvas, size) => {
         const scaled = document.createElement('canvas'); scaled.width = scaled.height = size;
         const ctx = scaled.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.drawImage(canvas, 0, 0, size, size);

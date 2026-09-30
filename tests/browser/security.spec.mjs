@@ -19,11 +19,17 @@ test('production headers/CSP, local-only network, no persistence or active paylo
   await page.waitForLoadState('networkidle'); const initialRequests = [...requests];
   await encode(page, 'https://example.com/?q=%3Cimg%20src=x%20onerror=alert(1)%3E');
   await Promise.all([page.waitForEvent('download'), page.locator('#download-button').click()]);
+  for (const format of ['svg', 'jpg', 'webp']) {
+    await page.locator('#download-toggle').click();
+    await Promise.all([page.waitForEvent('download'), page.locator(`[data-format="${format}"]`).click()]);
+  }
   await page.locator('#decode-tab').click(); await choose(page, fixture('independent-ascii'));
   await page.locator('#copy-button').click(); await expect(page.locator('#result-hint')).toHaveText('網址已複製。');
   expect(requests).toEqual(initialRequests);
   expect(requests.every(url => new URL(url).origin === 'http://127.0.0.1:4173')).toBe(true);
-  expect(await page.locator('a[href^="http"], img').count()).toBe(0);
+  expect(await page.locator('a[href^="http"]').count()).toBe(1);
+  await expect(page.locator('#open-link')).toHaveAttribute('href', externalUrl);
+  expect(await page.locator('img').count()).toBe(0);
   expect(await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length, cookie: document.cookie, violations: window.cspViolations }))).toEqual({ local: 0, session: 0, cookie: '', violations: [] });
   expect(await context.cookies()).toEqual([]);
   expect(await page.evaluate(() => indexedDB.databases())).toEqual([]);
@@ -33,6 +39,8 @@ test('production headers/CSP, local-only network, no persistence or active paylo
   await page.reload();
   await expect(page.locator('#url-input')).toHaveValue('');
   await expect(page.locator('#download-button')).toBeDisabled();
+  await expect(page.locator('#download-toggle')).toBeDisabled();
+  await expect(page.locator('#download-toggle')).toHaveAttribute('aria-expanded', 'false');
   await page.locator('#decode-tab').click();
   await expect(page.locator('#decoded-url')).toHaveValue('');
   await expect(page.locator('#copy-button')).toBeDisabled();

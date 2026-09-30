@@ -104,7 +104,7 @@ export async function observeDecode(page) {
     new MutationObserver(() => {
       const status = document.querySelector('#result-hint').textContent;
       const error = document.querySelector('#decode-error').textContent;
-      if (!pending || (!error && (!status || status.includes('正在解析')))) return;
+      if (!pending || (!error && (!status || status.includes('正在讀取')))) return;
       window.decodeSamples.push({ name: pending.name, elapsedMs: performance.now() - pending.start,
         syncMs: pending.syncStart ? performance.now() - pending.syncStart : 0,
         rasters: pending.rasters, success: !!document.querySelector('#decoded-url').value, error });

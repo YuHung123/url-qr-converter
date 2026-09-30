@@ -5,21 +5,31 @@ export function normalizeUrl(input: string): string {
   if (!trimmed) throw new Error('請輸入網址。');
   // Reject raw characters before URL parsing can remove or encode them.
   if (/[\x00-\x20\x7f\s]/u.test(trimmed)) {
-    throw new Error('網址中不可包含空白或控制字元，請使用百分比編碼。');
+    throw new Error('網址格式有誤，請移除空白或換行。');
+  }
+
+  const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(trimmed);
+  if (hasScheme && !/^https?:/i.test(trimmed)) {
+    throw new Error('只接受 http:// 或 https:// 網址。');
+  }
+  const candidate = hasScheme ? trimmed : `https://${trimmed}`;
+  // Do not reinterpret relative paths or arbitrary single words as websites.
+  if (!hasScheme && (/^[\/\\?#]/u.test(trimmed) || !/^(?:[^/?#]+\.[^/?#]+|localhost(?:[/?#]|$)|\[)/iu.test(trimmed))) {
+    throw new Error('請輸入有效網址，例如 example.com。');
   }
 
   let url: URL;
   try {
-    url = new URL(trimmed);
+    url = new URL(candidate);
   } catch {
-    throw new Error('請輸入有效的完整網址，例如 https://example.com。');
+    throw new Error('請輸入有效網址，例如 example.com。');
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error('只接受 http:// 或 https:// 網址。');
   }
-  if (!/^https?:\/\//i.test(trimmed) || !url.hostname) {
-    throw new Error('請輸入含 http:// 或 https:// 與主機名稱的完整網址。');
+  if (!/^https?:\/\//i.test(candidate) || !url.hostname) {
+    throw new Error('請檢查網址的格式與主機名稱。');
   }
   assertHostnameCharacters(url.hostname);
   return url.href;
@@ -32,7 +42,9 @@ export function assertHostnameCharacters(hostname: string): void {
   }
 }
 
-export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number; modules: number } {
+export type QrMatrix = readonly (readonly boolean[])[];
+
+export function createQrMatrix(url: string): QrMatrix {
   // 此 encoder 的 Byte 模式不是 UTF-8；只接受已正規化的 ASCII URL。
   if (/[^\x00-\x7f]/u.test(url)) {
     throw new Error('QR Code 內容必須是已正規化的 ASCII 網址。');
@@ -40,15 +52,20 @@ export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuff
   const qr = qrcode(0, 'M');
   qr.addData(url, 'Byte');
   qr.make();
+  return Array.from({ length: qr.getModuleCount() }, (_, row) =>
+    Array.from({ length: qr.getModuleCount() }, (_, column) => qr.isDark(row, column)));
+}
 
+export function createQrPixels(url: string, matrix = createQrMatrix(url)): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number; modules: number } {
+  if (/[^\x00-\x7f]/u.test(url)) throw new Error('QR Code 內容必須是已正規化的 ASCII 網址。');
   const quietZone = 4;
-  const modules = qr.getModuleCount();
+  const modules = matrix.length;
   const scale = Math.ceil(1024 / (modules + quietZone * 2));
   const size = (modules + quietZone * 2) * scale;
   const data = new Uint8ClampedArray(size * size * 4).fill(255);
   for (let row = 0; row < modules; row++) {
     for (let column = 0; column < modules; column++) {
-      if (!qr.isDark(row, column)) continue;
+      if (!matrix[row]?.[column]) continue;
       for (let y = (row + quietZone) * scale; y < (row + quietZone + 1) * scale; y++) {
         for (let x = (column + quietZone) * scale; x < (column + quietZone + 1) * scale; x++) {
           const offset = (y * size + x) * 4;
@@ -60,8 +77,8 @@ export function createQrPixels(url: string): { data: Uint8ClampedArray<ArrayBuff
   return { data, width: size, height: size, modules };
 }
 
-export function createQrCanvas(url: string): HTMLCanvasElement {
-  const pixels = createQrPixels(url);
+export function createQrCanvas(url: string, matrix = createQrMatrix(url)): HTMLCanvasElement {
+  const pixels = createQrPixels(url, matrix);
   const canvas = document.createElement('canvas');
   canvas.width = pixels.width;
   canvas.height = pixels.height;
@@ -81,5 +98,31 @@ export function exportPng(canvas: HTMLCanvasElement): Promise<Blob> {
         resolve(blob);
       }
     }, 'image/png');
+  });
+}
+
+export function createQrSvg(matrix: QrMatrix): string {
+  const size = matrix.length + 8;
+  const modules: string[] = [];
+  for (const [row, cells] of matrix.entries()) {
+    for (const [column, dark] of cells.entries()) {
+      if (dark) modules.push(`M${column + 4} ${row + 4}h1v1h-1z`);
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#fff"/><path d="${modules.join('')}" fill="#000"/></svg>`;
+}
+
+export type DownloadFormat = 'png' | 'svg' | 'jpg' | 'webp';
+
+export function exportQr(canvas: HTMLCanvasElement, matrix: QrMatrix, format: DownloadFormat): Promise<Blob> {
+  if (format === 'png') return exportPng(canvas);
+  if (format === 'svg') return Promise.resolve(new Blob([createQrSvg(matrix)], { type: 'image/svg+xml' }));
+  const mime = format === 'jpg' ? 'image/jpeg' : 'image/webp';
+  // The production QR canvas is opaque white with black, integer-sized modules.
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob || !blob.size || blob.type !== mime) reject(new Error('無法匯出圖片。'));
+      else resolve(blob);
+    }, mime, 0.98);
   });
 }

@@ -1,7 +1,7 @@
 {
   "name": "url-qr-converter",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "在瀏覽器內將網址與 QR Code 圖片互轉的小型工具。",
   "type": "module",
   "engines": {

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="在瀏覽器內將網址轉成 QR Code，下載 PNG，或從 QR Code 圖片讀取網址，全程無需上傳。" />
+    <meta name="description" content="將網址轉成 QR Code，下載圖片，或從 QR Code 圖片讀取網址。" />
     <meta name="referrer" content="no-referrer" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -14,78 +14,71 @@
     <a class="skip-link" tabindex="0" href="#converter">跳至轉換工具</a>
     <div class="page-shell">
       <header class="intro">
-        <p class="eyebrow">簡單分享，自在轉換</p>
         <h1>URL <span class="direction">↔</span> QR Code</h1>
-        <p class="intro-description">將網址轉成 QR Code，或從 QR Code 圖片讀取網址。</p>
-        <p class="privacy-note">在你的瀏覽器內處理，無需上傳網址或圖片。</p>
       </header>
-
       <main id="converter" tabindex="-1">
         <div class="mode-switch" role="tablist" aria-label="轉換模式">
           <button id="encode-tab" type="button" role="tab" aria-selected="true" aria-controls="encode-panel" tabindex="0">URL → QR Code</button>
           <button id="decode-tab" type="button" role="tab" aria-selected="false" aria-controls="decode-panel" tabindex="-1">QR Code → URL</button>
         </div>
-
         <div class="workspace">
-          <p id="milestone-note" class="milestone-note"><span class="badge">網址與 QR Code 互轉</span><span>支援 PNG 下載與圖片解析。</span></p>
-
           <section id="encode-panel" role="tabpanel" aria-labelledby="encode-tab" tabindex="0">
-            <div class="panel-heading">
-              <h2>讓網址更容易分享</h2>
-              <p>為個人網站、文章或備審資料，準備一個方便掃描的入口。</p>
-            </div>
             <div class="converter-grid">
               <div class="input-section">
                 <label for="url-input">網址 <span lang="en">URL</span></label>
-                <input id="url-input" name="url" type="url" inputmode="url" placeholder="https://example.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-hint url-error" />
-                <p id="url-hint" class="field-hint">請輸入含 http:// 或 https:// 的完整網址。</p>
+                <input id="url-input" name="url" type="url" inputmode="url" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-hint url-error" />
+                <p id="url-hint" class="field-hint">可省略 https://</p>
                 <p id="url-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <button id="generate-button" class="button primary-button" type="button" disabled aria-describedby="encode-note">Generate QR Code</button>
-                <p id="encode-note" class="availability">按下產生後可下載 PNG；修改網址會清除舊預覽。</p>
+                <button id="generate-button" class="button primary-button" type="button" disabled>產生 QR Code</button>
               </div>
               <div class="output-section">
-                <h3 id="preview-title">QR Code 預覽</h3>
+                <h2 id="preview-title">QR Code 預覽</h2>
                 <div id="qr-preview">
-                  <div id="qr-placeholder" class="preview-placeholder">
-                    <span class="placeholder-symbol" aria-hidden="true">↗</span>
-                    <p>QR Code 將顯示於此</p>
-                    <span class="field-hint">輸入網址，再按下產生按鈕</span>
-                  </div>
+                  <div id="qr-placeholder" class="preview-placeholder"><p>尚未產生 QR Code</p></div>
                   <div id="qr-image-container"></div>
                 </div>
                 <p id="qr-status" class="field-hint" role="status" aria-atomic="true"></p>
                 <p id="qr-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <button id="download-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
+                <div id="download-control" class="download-control">
+                  <div class="download-split">
+                    <button id="download-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
+                    <button id="download-toggle" autocomplete="off" class="button secondary-button" type="button" disabled aria-label="其他下載格式" aria-expanded="false" aria-controls="download-menu" aria-haspopup="menu"><span aria-hidden="true">▾</span></button>
+                  </div>
+                  <div id="download-menu" role="menu" aria-label="下載格式" hidden>
+                    <button type="button" role="menuitem" tabindex="-1" data-format="svg">Download SVG</button>
+                    <button type="button" role="menuitem" tabindex="-1" data-format="jpg">Download JPG</button>
+                    <button type="button" role="menuitem" tabindex="-1" data-format="webp">Download WebP</button>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
-
           <section id="decode-panel" role="tabpanel" aria-labelledby="decode-tab" tabindex="0" hidden>
-            <div class="panel-heading">
-              <h2>讀取圖片裡的網址</h2>
-              <p>選擇一張 QR Code 圖片，查看其中的連結。</p>
-            </div>
             <div class="converter-grid">
               <div class="input-section">
-                <label for="qr-image">QR Code 圖片</label>
-                <input id="qr-image" name="qr-image" type="file" accept="image/*" aria-describedby="image-hint decode-note decode-error" />
-                <p id="image-hint" class="field-hint">請用瀏覽器支援的點陣圖片，如 PNG、JPEG、WebP、GIF 或 BMP（最大 20 MiB）；SVG／HEIC 請先轉為 PNG 或 JPEG。</p>
-                <p id="decode-note" class="availability">只接受完整 HTTP / HTTPS 網址；圖片不會上傳。</p>
+                <div id="image-drop-zone" class="image-drop-zone">
+                  <label for="qr-image">選擇圖片或拖曳到這裡</label>
+                  <input id="qr-image" name="qr-image" type="file" accept="image/*" aria-describedby="image-hint decode-error" />
+                  <p id="image-hint" class="field-hint">一次一張，最大 20 MiB</p>
+                </div>
               </div>
               <div class="output-section">
-                <label for="decoded-url">解析結果 <span lang="en">URL</span></label>
-                <textarea id="decoded-url" rows="5" readonly autocomplete="off" placeholder="圖片中的網址將顯示於此" aria-describedby="result-hint decode-error"></textarea>
-                <p id="result-hint" class="field-hint" role="status" aria-atomic="true">目前尚未解析圖片。</p>
+                <p id="result-hint" class="field-hint result-status" role="status" aria-atomic="true"></p>
+                <label for="decoded-url">網址 <span lang="en">URL</span></label>
+                <div class="result-field">
+                  <textarea id="decoded-url" rows="3" readonly autocomplete="off" placeholder="尚未找到網址" aria-describedby="result-hint decode-error"></textarea>
+                  <button id="copy-button" autocomplete="off" class="button icon-button" type="button" disabled aria-label="複製網址" title="複製網址" aria-describedby="result-hint decode-error">
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>
+                  </button>
+                </div>
                 <p id="decode-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <button id="copy-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="result-hint decode-error">Copy URL</button>
+                <a id="open-link" class="button secondary-button open-link" target="_blank" rel="noopener noreferrer" hidden>開啟連結</a>
               </div>
             </div>
           </section>
         </div>
-        <noscript><p class="noscript-note">請啟用 JavaScript 以切換模式、產生／解析 QR Code、下載 PNG 與複製網址。</p></noscript>
+        <noscript><p class="noscript-note">請啟用 JavaScript 以使用轉換工具。</p></noscript>
       </main>
-
-      <footer class="page-footer"><p>一個專注於網址與 QR Code 的小工具。</p><p>無帳號 · 無追蹤 · 無雲端儲存</p></footer>
     </div>
   </body>
 </html>

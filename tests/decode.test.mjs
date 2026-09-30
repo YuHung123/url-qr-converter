@@ -69,7 +69,7 @@ test('blank pixels return no QR without throwing', () => {
   assert.deepEqual(decodePixels({ data: new Uint8ClampedArray(128 * 128 * 4).fill(255), width: 128, height: 128 }), { kind: 'no-qr' });
 });
 
-for (const payload of ['Hello World', 'javascript:alert(1)', 'data:text/plain,test', 'file:///tmp/test', 'example.com', 'https://']) {
+for (const payload of ['Hello World', 'javascript:alert(1)', 'data:text/plain,test', 'file:///tmp/test', 'blob:https://example.com/id', 'https://']) {
   test(`readable QR rejected by product URL validation: ${payload}`, () => {
     const pixels = createQrPixels(payload);
     assert.equal(jsQR(pixels.data, pixels.width, pixels.height)?.data, payload);
@@ -134,3 +134,13 @@ for (const failure of ['getContext', 'drawImage']) {
     assert.equal(canvas.height, 0);
   });
 }
+
+test('scheme-less QR URLs share the same HTTPS normalization and dangerous scheme rejection', () => {
+  for (const input of ['example.com', 'www.example.com', 'example.com/path', 'example.com/path?q=1']) {
+    const pixels = byteQrPixels([new TextEncoder().encode(input)]);
+    assert.deepEqual(decodePixels(pixels), { kind: 'success', url: `https://${input}${input.includes('/') ? '' : '/'}` });
+  }
+  for (const input of ['javascript:', 'data:', 'file:', 'blob:', 'mailto:', 'ws://example.com']) {
+    assert.deepEqual(decodePixels(byteQrPixels([new TextEncoder().encode(input)])), { kind: 'unsupported-url' });
+  }
+});

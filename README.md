@@ -1,22 +1,25 @@
 # URL ↔ QR Code Converter
 
-小型純前端工具：將個人網站、文章與作品集網址轉為 QR Code，下載 PNG 放入 Word／PDF，或從 QR 圖片讀取網址並複製。V1 不需帳號或後端。
+將網址轉為 QR Code，或從 QR Code 圖片讀取網址。v1.1.0 candidate，純前端工具。
 
 ## 使用方式
 
-- **URL → QR Code**：輸入完整網址，按 **Generate QR Code**，再按 **Download PNG**。
-- **QR Code → URL**：選擇圖片，成功後按 **Copy URL**。剪貼簿不可用時，可在結果欄手動選取複製。
-- 修改網址或選擇新圖會清除舊結果。解析出的網址不會自動開啟，也不會建立可點擊連結。
+- **URL → QR Code**：輸入網址（如 `example.com/path?q=1`），按 Enter 或 **產生 QR Code**。省略 scheme 時預設補 `https://`；明確輸入的 HTTP／HTTPS 保持原 scheme。
+- **下載**：主按鈕下載 PNG，右側選單提供 SVG、JPG、WebP。四種格式都是黑色 QR、白底及四格白邊；PNG 保持至少 1024 px 的無損輸出，SVG 直接由 QR matrix 產生向量圖。JPG／WebP 使用高品質瀏覽器編碼；文件排版優先使用 PNG 或 SVG。
+- 編輯網址時保留已生成 QR；只有成功按下產生後才替換。驗證失敗也保留舊 QR，短提示標明網址已修改。下載始終代表目前顯示的 QR，與輸入草稿分開。
+- **QR Code → URL**：選擇一張圖片或拖曳到上傳區。成功後可按右側 **複製網址** 圖示，或 **開啟連結**。剪貼簿不可用時，可在完整結果欄手動選取複製。
+- 新圖片會清除舊解析結果。拖入多個檔案或非檔案內容會提示只選一張圖片；非圖片沿用相同讀取驗證，失敗可重新選圖。不做批次處理。
+- **開啟連結**只在使用者主動點擊後以新分頁前往已驗證的 normalized HTTP(S) URL，使用 `noopener noreferrer`；解析成功不會自動開啟。結果欄完整保留 host、path、query 與 fragment，可換行及捲動。請先確認網址，再開啟。
 
-只接受完整 **HTTP / HTTPS** URL。先去除首尾空白，再拒絕其餘空白／控制字元；`%20` 等百分比編碼可用。Unicode 網域與路徑會標準化為 punycode／百分比編碼。`example.com` 不會自動補上 HTTPS。格式驗證不代表網站存在或安全。
+兩模式共用 HTTP(S) URL validation。先去除首尾空白，再拒絕其餘 raw ASCII C0／DEL 控制字元及 JavaScript whitespace；`%20` 等百分比編碼可用。明確的 javascript／data／file／blob／mailto／ws 等 scheme 仍拒絕，不會被補成 HTTPS。裸網域、含路徑或 query 的網域、`localhost` 與括號 IPv6 可省略 scheme；相對路徑及一般單詞不接受。含 port 的網址請明確輸入 HTTP(S) scheme。Unicode 網域與路徑會標準化為 punycode／百分比編碼。格式驗證不代表網站存在或安全；既有 userinfo 接受行為保留，完整 normalized URL 就是開啟的網址。
 
-圖片請優先使用清晰的 **PNG、JPEG、WebP**；GIF／BMP 依瀏覽器支援。`image/*` 是選檔提示，不保證所有格式都可解析。SVG／HEIC／HEIF 請先自行轉為 PNG 或 JPEG；不含 SVG parser 或 HEIC decoder。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR。
+圖片請優先使用清晰的 **PNG、JPEG、WebP**；GIF／BMP 依瀏覽器支援。`image/*` 是選檔提示，不保證所有格式都可解析。SVG／HEIC／HEIF 請先自行轉為 PNG 或 JPEG；不含 SVG parser 或 HEIC decoder（SVG 支援是匯出格式）。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR。選檔與拖曳完全共用大小限制、圖片讀取、768 → 2048 分階段掃描、UTF-8／URL validation、過期結果保護及 cleanup。
 
 ## 隱私
 
 **Images, URLs and decoded payloads are processed locally in your browser and are not uploaded.**
 
-沒有分析追蹤、cookies、localStorage、IndexedDB、Service Worker 或其他應用程式持久儲存。頁面載入時只取得網站自身的靜態資源；轉換流程不發送網路請求。結果留在目前頁面記憶體，重新載入即清除。下載 PNG 與複製網址由使用者主動觸發，檔案與系統剪貼簿可在頁面外保留。靜態主機自身的存取紀錄取決於部署設定。
+沒有分析追蹤、cookies、localStorage、IndexedDB、Service Worker 或其他應用程式持久儲存。頁面載入時只取得網站自身的靜態資源；產生 QR、解析圖片、四種下載與複製不發送網路請求。結果留在目前頁面記憶體，重新載入即清除。只有使用者主動按 **開啟連結**，瀏覽器才會前往該外部網站；該網站的網路與隱私行為由該網站決定。下載檔與系統剪貼簿可在頁面外保留。靜態主機自身的存取紀錄取決於部署設定。
 
 ## 開發
 
@@ -34,6 +37,7 @@ npm run dev
 ```sh
 npm test
 npm run typecheck
+npm run build
 npx playwright install chromium firefox webkit
 npm run test:browser
 npm run test:artifact
@@ -43,11 +47,11 @@ npm ls --omit=dev --all
 
 Linux 若缺少瀏覽器系統函式庫，依 [Playwright 官方安裝說明](https://playwright.dev/docs/browsers#install-system-dependencies)使用 `npx playwright install --with-deps`；可能需要管理員權限。日常 Node 測試不需安裝 browser。
 
-`test:browser` 自動建立正式 build，使用單一 worker 跑 Chromium、Firefox、WebKit；由 Playwright 管理 preview 的啟動與關閉，不重用已占用的 4173。只跑一種引擎可用 `npm run test:browser -- --project=firefox`。`test:artifact` 驗證最近的 `dist/`，請先 build。
+`test:browser` 自動建立正式 build，使用單一 worker 跑 Chromium、Firefox、WebKit；由 Playwright 管理 preview 的啟動與關閉，不重用已占用的 4173。只跑一種引擎可用 `npm run test:browser -- --project=firefox`。`test:artifact` 驗證最近的 `dist/`，請先 build，並在 Git checkout 中執行（LF byte gate 需要 Git metadata，Download ZIP 不含此資訊）。
 
-瀏覽器測試包含功能、鍵盤、axe、responsive、真實 PNG 下載／再解析、獨立 encoder fixture、race、網路／儲存與效能記錄。輸出 JSON、截圖與失敗 trace 在忽略的 `test-results/`；效能與密度資料另存為各測試目錄中的 JSON，亦附於 report。沒有額外 E2E 框架。兩張 committed fixture 合計不到 1 KiB；生成方式見 [fixtures](tests/fixtures/README.md)。
+瀏覽器測試包含功能、鍵盤、axe、responsive、真實 PNG／SVG／JPG／WebP 下載與 round-trip、SVG matrix 驗證、Enter／預覽保留、dropdown／drag-drop／Open Link、獨立 encoder fixture、race、網路／儲存與效能記錄。輸出 JSON、截圖與失敗 trace 在忽略的 `test-results/`；效能與密度資料另存為各測試目錄中的 JSON，亦附於 report。沒有額外 E2E 框架。兩張 committed fixture 合計不到 1 KiB；生成方式見 [fixtures](tests/fixtures/README.md)。
 
-**Playwright WebKit is not the same as testing real Safari on macOS/iOS.** axe 亦不能代替螢幕閱讀器與人工驗收。v1.0.1 實測結果與硬體限制見 [V1_0_1_VERIFICATION](V1_0_1_VERIFICATION.md) 及 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
+**Playwright WebKit is not the same as testing real Safari on macOS/iOS.** axe 亦不能代替螢幕閱讀器與人工驗收。v1.1.0 candidate 實測結果與硬體限制見 [V1_1_VERIFICATION](V1_1_VERIFICATION.md) 及 [RELEASE_CHECKLIST](RELEASE_CHECKLIST.md)。
 
 ## Production 與部署
 
@@ -72,7 +76,7 @@ default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect
 
 ## 文件與掃描建議
 
-QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG 最少 1024 × 1024，每格為整數像素：`(modules + 8) × ceil(1024 / (modules + 8))`。下載保留原始尺寸；畫面預覽約 320 CSS px，窄螢幕會更小。當 QR 達 version 17（85 格）以上，介面會提示改用下載圖片並保留足夠尺寸。
+QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG 最少 1024 × 1024，每格為整數像素：`(modules + 8) × ceil(1024 / (modules + 8))`。下載保留原始尺寸；畫面預覽 desktop 最多 240 CSS px、mobile 最多 200 CSS px。當 QR 達 version 17（85 格）以上，介面會提示改用下載圖片並保留足夠尺寸。
 
 插入 Word／PDF 時保持正方形與四周白邊，避免 JPEG 重壓縮、裁掉白邊或用模糊截圖取代 PNG。普通短網址可先以約 **3 cm** 正方形排版；較長網址需更大。保守起點為每格約 **0.5 mm**，含白邊總寬約 `(modules + 8) × 0.5 mm`，這是排版建議，不是所有印表機／手機的掃描保證。必須掃描最終 PDF 與實際列印版本。真實手機和列印掃描仍列於 manual checklist。
 
@@ -85,4 +89,4 @@ QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG
 - 只接受完整可驗證的 UTF-8 Byte segments；不支援所有 QR 字元編碼。jsQR 1.4.0 發布已久，固定版本並以測試保護。
 - Copy 需瀏覽器允許 Clipboard API（部署請用 HTTPS）；拒絕時可手動複製。
 
-[CHANGELOG](CHANGELOG.md) · [Release checklist](RELEASE_CHECKLIST.md) · [v1.0.1 驗證](V1_0_1_VERIFICATION.md) · [v1.0.0 獨立審查](V1_RELEASE_AUDIT.md)。M0／M1／M2／M3 驗證文件與 v1.0.0 audit 保留原始歷史結果。
+[CHANGELOG](CHANGELOG.md) · [Release checklist](RELEASE_CHECKLIST.md) · [v1.1.0 candidate 驗證](V1_1_VERIFICATION.md) · [v1.0.1 驗證](V1_0_1_VERIFICATION.md) · [v1.0.0 獨立審查](V1_RELEASE_AUDIT.md)。M0／M1／M2／M3 驗證文件與 v1.0.0 audit 保留原始歷史結果。

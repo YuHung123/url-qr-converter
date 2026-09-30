@@ -32,10 +32,10 @@ test('接受完整 HTTP(S) URL，trim 後回傳標準化網址', () => {
   ]) assert.equal(normalizeUrl(input), expected);
 });
 
-test('拒絕空白、相對網址、非 HTTP(S)、缺少主機與無效網址，不補 protocol', () => {
+test('拒絕空白、相對網址、非 HTTP(S)、缺少主機與無效網址', () => {
   for (const input of [
-    '', '   ', '一般文字', 'example.com', '/article', '//example.com',
-    'javascript:alert(1)', 'data:text/plain,test', 'file:///tmp/test', 'ftp://example.com',
+    '', '   ', '一般文字', '/article', '//example.com',
+    'javascript:alert(1)', 'data:text/plain,test', 'file:///tmp/test', 'ftp://example.com', 'blob:https://example.com/id', 'mailto:user@example.com', 'ws://example.com', 'javascript:', 'data:', 'file:', 'blob:', 'mailto:',
     'https://', 'https://?id=123', 'https://exa mple.com', 'https://exa%20mple.com', 'https://[invalid]',
     'https://example.com:99999', 'https:example.com', 'http:/example.com',
   ]) assert.throws(() => normalizeUrl(input), Error, input);
@@ -105,5 +105,53 @@ test('download pixels keep four white modules and whole-pixel modules at short a
       assert.equal(dark(x, 5 * scale - 1), true);
     }
     assert.equal(dark(11 * scale, 4 * scale), false);
+  }
+});
+
+test('scheme-less websites use HTTPS; explicit HTTP(S) retain scheme and normalization', () => {
+  for (const input of ['example.com', 'www.example.com', 'example.com/path', 'example.com/path?q=1', 'openai.com', '例子.測試/採訪?q=😀']) {
+    const expected = new URL(`https://${input}`).href;
+    assert.equal(normalizeUrl(input), expected);
+    assert.equal(normalizeUrl(expected), expected);
+  }
+  for (const input of ['http://example.com', 'https://example.com']) assert.equal(normalizeUrl(input), new URL(input).href);
+  for (const input of ['example.com/a\tb', 'example.com/a\nb', 'example.com/a b', 'example.com:99999', 'http:example.com', 'https:/example.com', '/example.com', '//example.com', '\\example.com']) assert.throws(() => normalizeUrl(input));
+});
+
+test('SVG is a square vector matching the EC M matrix, with four white modules and no payload metadata', async () => {
+  const { createQrMatrix, createQrSvg } = await import('../src/qr.ts');
+  const { default: qrcode } = await import('qrcode-generator');
+  for (const input of ['example.com', 'https://例子.測試/採訪?q=😀', `https://example.com/${'a'.repeat(1000)}`]) {
+    const url = normalizeUrl(input);
+    const matrix = createQrMatrix(url);
+    const reference = qrcode(0, 'M'); reference.addData(url, 'Byte'); reference.make();
+    const size = matrix.length + 8;
+    const svg = createQrSvg(matrix);
+    assert.ok(svg.includes(`viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"`));
+    assert.ok(svg.includes(`<rect width="${size}" height="${size}" fill="#fff"/>`));
+    assert.ok(!/script|image|href|metadata|https:\/\/example/u.test(svg));
+    const positions = new Set([...svg.matchAll(/M(\d+) (\d+)h1v1h-1z/g)].map(m => `${Number(m[2]) - 4},${Number(m[1]) - 4}`));
+    let darkCount = 0;
+    for (let row = 0; row < matrix.length; row++) for (let col = 0; col < matrix.length; col++) {
+      const dark = reference.isDark(row, col);
+      assert.equal(matrix[row][col], dark);
+      assert.equal(positions.has(`${row},${col}`), dark);
+      darkCount += Number(dark);
+    }
+    assert.equal(positions.size, darkCount);
+    for (const key of positions) for (const n of key.split(',').map(Number)) assert.ok(n >= 0 && n < matrix.length);
+  }
+});
+
+test('JPG and WebP reject browser MIME fallback, empty output and synchronous errors', async () => {
+  const { exportQr } = await import('../src/qr.ts');
+  for (const format of ['jpg', 'webp']) {
+    for (const blob of [null, new Blob([]), new Blob(['bad'], { type: 'image/png' })]) {
+      await assert.rejects(exportQr({ toBlob: callback => callback(blob) }, [], format));
+    }
+    await assert.rejects(exportQr({ toBlob() { throw new Error('canvas failed'); } }, [], format));
+    const mime = format === 'jpg' ? 'image/jpeg' : 'image/webp';
+    const blob = new Blob(['ok'], { type: mime });
+    assert.equal(await exportQr({ toBlob(callback, type, quality) { assert.equal(type, mime); assert.equal(quality, 0.98); callback(blob); } }, [], format), blob);
   }
 });
