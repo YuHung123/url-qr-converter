@@ -136,7 +136,7 @@ for (const failure of ['getContext', 'drawImage']) {
 }
 
 test('scheme-less QR URLs share the same HTTPS normalization and dangerous scheme rejection', () => {
-  for (const input of ['example.com', 'www.example.com', 'example.com/path', 'example.com/path?q=1']) {
+  for (const input of ['example.com', 'www.example.com', 'example.com/path', 'example.com/path?q=1', 'localhost:3000', 'localhost:8080/path', '127.0.0.1:8080']) {
     const pixels = byteQrPixels([new TextEncoder().encode(input)]);
     assert.deepEqual(decodePixels(pixels), { kind: 'success', url: `https://${input}${input.includes('/') ? '' : '/'}` });
   }

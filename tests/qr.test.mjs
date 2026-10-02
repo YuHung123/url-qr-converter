@@ -118,6 +118,35 @@ test('scheme-less websites use HTTPS; explicit HTTP(S) retain scheme and normali
   for (const input of ['example.com/a\tb', 'example.com/a\nb', 'example.com/a b', 'example.com:99999', 'http:example.com', 'https:/example.com', '/example.com', '//example.com', '\\example.com']) assert.throws(() => normalizeUrl(input));
 });
 
+test('scheme-less localhost ports normalize like loopback IPv4; explicit HTTP(S) retain scheme', () => {
+  for (const [input, expected] of [
+    ['localhost', 'https://localhost/'],
+    ['localhost:3000', 'https://localhost:3000/'],
+    ['localhost:8080/path', 'https://localhost:8080/path'],
+    ['LOCALHOST:3000/path?q=1#part', 'https://localhost:3000/path?q=1#part'],
+    ['localhost:3000?q=1#part', 'https://localhost:3000/?q=1#part'],
+    ['localhost:3000#part', 'https://localhost:3000/#part'],
+    ['localhost/path?q=1#part', 'https://localhost/path?q=1#part'],
+    ['localhost:443', 'https://localhost/'],
+    ['localhost:65535', 'https://localhost:65535/'],
+    ['http://localhost:3000', 'http://localhost:3000/'],
+    ['https://localhost:3000', 'https://localhost:3000/'],
+    ['127.0.0.1:8080', 'https://127.0.0.1:8080/'],
+  ]) assert.equal(normalizeUrl(input), expected, input);
+});
+
+test('localhost ports still reject invalid syntax and out-of-range values', () => {
+  for (const input of ['localhost:65536', 'localhost:99999/path', 'localhost:abc', 'localhost:3000abc/path', 'localhost:-1', 'localhost:3.5', 'localhost:3000:8080', 'localhost:3000\\path']) {
+    assert.throws(() => normalizeUrl(input), Error, input);
+  }
+});
+
+test('localhost recognition preserves unsafe/custom scheme and plain-text boundaries', () => {
+  for (const input of ['javascript:alert(1)', 'data:text/plain,test', 'file:///tmp/test', 'custom:3000', 'abc', 'abc:3000', 'Hello World', '一般文字', 'localhostevil:3000', 'localhost:password@evil.test', 'localhost:3000@evil.test']) {
+    assert.throws(() => normalizeUrl(input), Error, input);
+  }
+});
+
 test('SVG is a square vector matching the EC M matrix, with four white modules and no payload metadata', async () => {
   const { createQrMatrix, createQrSvg } = await import('../src/qr.ts');
   const { default: qrcode } = await import('qrcode-generator');

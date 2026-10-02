@@ -8,13 +8,16 @@ export function normalizeUrl(input: string): string {
     throw new Error('網址格式有誤，請移除空白或換行。');
   }
 
-  const hasScheme = /^[a-z][a-z\d+.-]*:/i.test(trimmed);
+  // Recognize localhost with an optional numeric port before scheme detection;
+  // the URL parser below still validates the port range and the full URL.
+  const isLocalhost = /^localhost(?::\d+)?(?:[/?#]|$)/i.test(trimmed);
+  const hasScheme = !isLocalhost && /^[a-z][a-z\d+.-]*:/i.test(trimmed);
   if (hasScheme && !/^https?:/i.test(trimmed)) {
     throw new Error('只接受 http:// 或 https:// 網址。');
   }
   const candidate = hasScheme ? trimmed : `https://${trimmed}`;
   // Do not reinterpret relative paths or arbitrary single words as websites.
-  if (!hasScheme && (/^[\/\\?#]/u.test(trimmed) || !/^(?:[^/?#]+\.[^/?#]+|localhost(?:[/?#]|$)|\[)/iu.test(trimmed))) {
+  if (!hasScheme && (/^[\/\\?#]/u.test(trimmed) || (!isLocalhost && !/^(?:[^/?#]+\.[^/?#]+|\[)/u.test(trimmed)))) {
     throw new Error('請輸入有效網址，例如 example.com。');
   }
 

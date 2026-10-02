@@ -28,6 +28,38 @@ test('minimal header/footer and Enter generate scheme-less URL, with identical v
   await expect(page.locator('#url-input')).toHaveAttribute('aria-invalid', 'true');
 });
 
+test('scheme-less localhost generates QR and Open Link uses the validated normalized URL', async ({ page, context }) => {
+  const popups = []; page.on('popup', popup => popups.push(popup));
+  for (const input of ['localhost:3000', 'localhost:8080/path']) {
+    const expected = `https://${input}${input.includes('/') ? '' : '/'}`;
+    await encode(page, input);
+    await expect(page.locator('#url-input')).toHaveValue(expected);
+    await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${expected} 的 QR Code`);
+    const png = await page.locator('canvas').evaluate(canvas => canvas.toDataURL().split(',')[1]);
+    await page.locator('#decode-tab').click();
+    await choose(page, { name: 'localhost.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') }, expected);
+    // A raw scheme-less QR payload must pass through the same normalization.
+    await choose(page, await qrFile(page, [input]), expected);
+    const link = page.getByRole('link', { name: '開啟連結' });
+    await expect(link).toHaveAttribute('href', expected);
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(popups).toHaveLength(0);
+    if (input === 'localhost:3000') await page.locator('#encode-tab').click();
+  }
+  const navigations = [];
+  await context.route('https://localhost:8080/**', route => {
+    navigations.push({ url: route.request().url(), referer: route.request().headers().referer });
+    return route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Local navigation fixture</title>' });
+  });
+  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByRole('link', { name: '開啟連結' }).click()]);
+  await popup.waitForLoadState();
+  expect(navigations).toEqual([{ url: 'https://localhost:8080/path', referer: undefined }]);
+  expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+  await popup.close();
+  expect(popups).toHaveLength(1);
+});
+
 test('editing and invalid generate preserve QR A; all downloads follow the displayed result until generate B', async ({ page }, info) => {
   const a = 'https://example.com/a', b = 'https://example.com/b';
   await encode(page, a);

@@ -11,7 +11,7 @@
 - 新圖片會清除舊解析結果。拖入多個檔案或非檔案內容會提示只選一張圖片；非圖片沿用相同讀取驗證，失敗可重新選圖。不做批次處理。
 - **開啟連結**只在使用者主動點擊後以新分頁前往已驗證的 normalized HTTP(S) URL，使用 `noopener noreferrer`；解析成功不會自動開啟。結果欄完整保留 host、path、query 與 fragment，可換行及捲動。請先確認網址，再開啟。
 
-兩模式共用 HTTP(S) URL validation。先去除首尾空白，再拒絕其餘 raw ASCII C0／DEL 控制字元及 JavaScript whitespace；`%20` 等百分比編碼可用。明確的 javascript／data／file／blob／mailto／ws 等 scheme 仍拒絕，不會被補成 HTTPS。裸網域、含路徑或 query 的網域、`localhost` 與括號 IPv6 可省略 scheme；相對路徑及一般單詞不接受。含 port 的網址請明確輸入 HTTP(S) scheme。Unicode 網域與路徑會標準化為 punycode／百分比編碼。格式驗證不代表網站存在或安全；既有 userinfo 接受行為保留，完整 normalized URL 就是開啟的網址。
+兩模式共用 HTTP(S) URL validation。先去除首尾空白，再拒絕其餘 raw ASCII C0／DEL 控制字元及 JavaScript whitespace；`%20` 等百分比編碼可用。明確的 javascript／data／file／blob／mailto／ws 等 scheme 仍拒絕，不會被補成 HTTPS。裸網域、含路徑或 query 的網域、`localhost` 與括號 IPv6 可省略 scheme；相對路徑及一般單詞不接受。`localhost`、IPv4 與括號 IPv6 含有效 port 時也可省略 scheme（如 `localhost:3000`、`127.0.0.1:8080`）；其他網域含 port 時請明確輸入 HTTP(S) scheme。Unicode 網域與路徑會標準化為 punycode／百分比編碼。格式驗證不代表網站存在或安全；既有 userinfo 接受行為保留，完整 normalized URL 就是開啟的網址。
 
 圖片請優先使用清晰的 **PNG、JPEG、WebP**；GIF／BMP 依瀏覽器支援。`image/*` 是選檔提示，不保證所有格式都可解析。SVG／HEIC／HEIF 請先自行轉為 PNG 或 JPEG；不含 SVG parser 或 HEIC decoder（SVG 支援是匯出格式）。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR。選檔與拖曳完全共用大小限制、圖片讀取、768 → 2048 分階段掃描、UTF-8／URL validation、過期結果保護及 cleanup。
 
