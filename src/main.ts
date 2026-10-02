@@ -57,6 +57,7 @@ const imageContainer = document.querySelector<HTMLElement>('#qr-image-container'
 const urlError = document.querySelector<HTMLElement>('#url-error')!;
 const qrError = document.querySelector<HTMLElement>('#qr-error')!;
 const status = document.querySelector<HTMLElement>('#qr-status')!;
+const notice = document.querySelector<HTMLElement>('#qr-notice')!;
 
 const downloadControl = document.querySelector<HTMLElement>('#download-control')!;
 const downloadToggle = document.querySelector<HTMLButtonElement>('#download-toggle')!;
@@ -123,13 +124,12 @@ function clearErrors(): void {
 
 function resultStatus(): void {
   if (!generated) return;
-  status.textContent = urlInput.value !== generated.url
-    ? '網址已修改，重新產生以更新 QR Code。'
-    : '已產生 QR Code。';
+  const modified = urlInput.value !== generated.url;
+  const modifiedMessage = modified ? '網址已修改，請重新產生。' : '';
   // Smaller previews make dense codes harder to scan; preserve safety guidance.
-  if (generated.matrix.length >= 85) {
-    status.textContent += ' QR Code 較密集，掃描或列印請使用下載圖片並保留白邊。';
-  }
+  const denseMessage = generated.matrix.length >= 85 ? 'QR Code 較密，建議下載後掃描。' : '';
+  notice.textContent = [modifiedMessage, denseMessage].filter(Boolean).join(' ');
+  status.textContent = [modifiedMessage || '已產生 QR Code。', denseMessage].filter(Boolean).join(' ');
 }
 
 urlInput.addEventListener('input', () => { clearErrors(); resultStatus(); });
@@ -242,7 +242,7 @@ async function readImage(files: readonly File[]): Promise<void> {
   imageInput.removeAttribute('aria-invalid');
   if (files.length !== 1) {
     imageInput.setAttribute('aria-invalid', 'true');
-    decodeError.textContent = '請選擇一張圖片。';
+    decodeError.textContent = files.length > 1 ? '一次只能選擇一張圖片。' : '請選擇一張圖片。';
     return;
   }
   const file = files[0]!;
@@ -258,11 +258,12 @@ async function readImage(files: readonly File[]): Promise<void> {
     decodeStatus.textContent = '已找到網址';
   } else {
     const messages = {
-      'invalid-image': '無法讀取這張圖片，請改用 PNG、JPG 或 WebP。',
-      'no-qr': '找不到 QR Code，請選擇清晰的圖片。',
-      'unsupported-url': '這個 QR Code 不是網址，僅支援 HTTP / HTTPS。',
-      'decode-failure': '無法讀取這張圖片，請重試。',
-      'too-large': '請選擇 20 MiB 以下的圖片。',
+      'unsupported-format': '不支援此檔案格式。',
+      'invalid-image': '無法讀取這張圖片。',
+      'no-qr': '圖片中找不到 QR Code。',
+      'unsupported-url': '這個 QR Code 不是網址。',
+      'decode-failure': '無法讀取這張圖片。',
+      'too-large': '圖片檔案過大（上限 20 MiB）。',
     };
     imageInput.setAttribute('aria-invalid', 'true');
     decodeError.textContent = messages[result.kind];

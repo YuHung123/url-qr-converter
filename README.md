@@ -8,12 +8,12 @@
 - **下載**：主按鈕下載 PNG，右側選單提供 SVG、JPG、WebP。四種格式都是黑色 QR、白底及四格白邊；PNG 保持至少 1024 px 的無損輸出，SVG 直接由 QR matrix 產生向量圖。JPG／WebP 使用高品質瀏覽器編碼；文件排版優先使用 PNG 或 SVG。
 - 編輯網址時保留已生成 QR；只有成功按下產生後才替換。驗證失敗也保留舊 QR，短提示標明網址已修改。下載始終代表目前顯示的 QR，與輸入草稿分開。
 - **QR Code → URL**：選擇一張圖片或拖曳到上傳區。成功後可按右側 **複製網址** 圖示，或 **開啟連結**。剪貼簿不可用時，可在完整結果欄手動選取複製。
-- 新圖片會清除舊解析結果。拖入多個檔案或非檔案內容會提示只選一張圖片；非圖片沿用相同讀取驗證，失敗可重新選圖。不做批次處理。
+- 新圖片會清除舊解析結果。拖入多個檔案會提示一次只能選一張；非檔案內容會提示選擇圖片。明確不支援的格式會直接提示，檔案損毀則顯示讀取失敗；失敗後可重新選圖。不做批次處理。
 - **開啟連結**只在使用者主動點擊後以新分頁前往已驗證的 normalized HTTP(S) URL，使用 `noopener noreferrer`；解析成功不會自動開啟。結果欄完整保留 host、path、query 與 fragment，可換行及捲動。請先確認網址，再開啟。
 
 兩模式共用 HTTP(S) URL validation。先去除首尾空白，再拒絕其餘 raw ASCII C0／DEL 控制字元及 JavaScript whitespace；`%20` 等百分比編碼可用。明確的 javascript／data／file／blob／mailto／ws 等 scheme 仍拒絕，不會被補成 HTTPS。裸網域、含路徑或 query 的網域、`localhost` 與括號 IPv6 可省略 scheme；相對路徑及一般單詞不接受。`localhost`、IPv4 與括號 IPv6 含有效 port 時也可省略 scheme（如 `localhost:3000`、`127.0.0.1:8080`）；其他網域含 port 時請明確輸入 HTTP(S) scheme。Unicode 網域與路徑會標準化為 punycode／百分比編碼。格式驗證不代表網站存在或安全；既有 userinfo 接受行為保留，完整 normalized URL 就是開啟的網址。
 
-圖片請優先使用清晰的 **PNG、JPEG、WebP**；GIF／BMP 依瀏覽器支援。`image/*` 是選檔提示，不保證所有格式都可解析。SVG／HEIC／HEIF 請先自行轉為 PNG 或 JPEG；不含 SVG parser 或 HEIC decoder（SVG 支援是匯出格式）。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR。選檔與拖曳完全共用大小限制、圖片讀取、768 → 2048 分階段掃描、UTF-8／URL validation、過期結果保護及 cleanup。
+QR 圖片主要支援 **PNG、JPEG、WebP、SVG**；GIF／BMP 依瀏覽器支援。SVG 只接受有限的靜態黑白 `rect`／`path` 幾何，包含本工具下載的 SVG；不接受 script、事件、CSS、外部資源或嵌入內容。原始 SVG 不會插入頁面或交給影像載入器，而是解析幾何後畫成受限尺寸的 canvas，交由同一 jsQR／UTF-8／網址驗證流程處理。HEIC／HEIF 不保證支援。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR；正常畫面不顯示限制，違反時才提示。選檔與拖曳共用大小限制、768 → 2048 分階段掃描、過期結果保護及 cleanup。
 
 ## 隱私
 
@@ -85,7 +85,7 @@ QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG
 - 不提供相機掃描、裁切、批次、歷史紀錄、縮網址、自訂樣式、PWA 或後端。
 - 過長網址超出 QR 容量時會失敗；高密度 QR 在小預覽中可能難掃，請用下載圖片並放大。
 - 過低對比、嚴重模糊／透視、QR 太小、或過長截圖縮小後可能無法辨識。請裁出 QR 或使用清晰原圖。
-- 解碼先嘗試最長邊 768 px，找不到 QR 才重試最多 2048 px，不放大小圖；初始圖片解碼仍可能配置原圖記憶體，20 MiB 檔案限制並非所有 image bombs 的防護保證。jsQR 同步執行，大型／複雜影像或資源吃緊的裝置可能暫時阻塞介面；Windows WebKit 實測曾出現秒級停頓，詳見 M3 報告。
+- 解碼先嘗試最長邊 768 px，找不到 QR 才重試最多 2048 px；raster 小圖不放大，SVG 會先依幾何縮放至受限 raster 尺寸。raster 的初始圖片解碼仍可能配置原圖記憶體，20 MiB 檔案限制並非所有 image bombs 的防護保證。jsQR 同步執行，大型／複雜影像或資源吃緊的裝置可能暫時阻塞介面；Windows WebKit 實測曾出現秒級停頓，詳見 M3 報告。
 - 只接受完整可驗證的 UTF-8 Byte segments；不支援所有 QR 字元編碼。jsQR 1.4.0 發布已久，固定版本並以測試保護。
 - Copy 需瀏覽器允許 Clipboard API（部署請用 HTTPS）；拒絕時可手動複製。
 

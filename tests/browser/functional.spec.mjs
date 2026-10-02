@@ -103,12 +103,15 @@ test('stale decode and Copy preserve newest result and focus', async ({ page }) 
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: () => new Promise(resolve => window.copyResolvers.push(resolve)) } });
   });
   await page.locator('#qr-image').setInputFiles(fixture('independent-ascii'));
+  await page.waitForFunction(() => window.pendingBitmaps.length === 1);
   await page.locator('#qr-image').setInputFiles(fixture('independent-unicode'));
+  await page.waitForFunction(() => window.pendingBitmaps.length === 2);
   await page.evaluate(() => window.pendingBitmaps[1]()); await expect(page.locator('#decoded-url')).toHaveValue(unicodeUrl);
   await page.evaluate(() => window.pendingBitmaps[0]()); await expect(page.locator('#decoded-url')).toHaveValue(unicodeUrl);
   await page.locator('#copy-button').focus(); await page.keyboard.press('Enter'); await page.keyboard.press('Space');
   expect(await page.evaluate(() => window.copyResolvers.length)).toBe(1); await expect(page.locator('#copy-button')).toHaveAttribute('aria-disabled', 'true');
   await page.locator('#qr-image').setInputFiles(fixture('independent-ascii'));
+  await page.waitForFunction(() => window.pendingBitmaps.length === 3);
   await expect(page.locator('#qr-image')).toBeFocused(); await expect(page.locator('#decoded-url')).toHaveValue('');
   await expect(page.locator('#copy-button')).toBeDisabled(); await page.keyboard.press('Tab');
   await page.evaluate(() => window.pendingBitmaps[2]()); await expect(page.locator('#decoded-url')).toHaveValue(externalUrl);

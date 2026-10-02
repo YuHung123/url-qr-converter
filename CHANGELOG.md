@@ -8,6 +8,8 @@
 - Add a keyboard-accessible split download menu for PNG, SVG, JPG and WebP.
 - Accept dragged QR images through the existing image validation and decode pipeline.
 - Redesign decoded-link actions with a copy icon and explicit Open Link in a protected new tab.
+- Simplify visible field labels, upload controls, status text and image error messages while preserving live announcements.
+- Decode safe static SVG QR images, including SVG files downloaded from this tool, through the existing pixel and URL validation pipeline.
 
 ## 1.0.1
 

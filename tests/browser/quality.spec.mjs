@@ -140,8 +140,8 @@ test('screen preview density assessment at 240 and 200 CSS pixels', async ({ pag
     await encode(page, url);
     const qr = qrcode(0, 'M'); qr.addData(url, 'Byte'); qr.make();
     const modules = qr.getModuleCount();
-    if (modules >= 85) await expect(page.locator('#qr-status')).toContainText('QR Code 較密集');
-    else await expect(page.locator('#qr-status')).not.toContainText('QR Code 較密集');
+    if (modules >= 85) await expect(page.locator('#qr-notice')).toHaveText('QR Code 較密，建議下載後掃描。');
+    else await expect(page.locator('#qr-notice')).toBeEmpty();
     for (const size of [240, 200]) {
       const pixels = await page.locator('canvas').evaluate((canvas, size) => {
         const scaled = document.createElement('canvas'); scaled.width = scaled.height = size;
@@ -167,7 +167,7 @@ test('text, focus, input boundaries and selected tabs have sufficient contrast',
     };
     const ratio = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
     const input = getComputedStyle(document.querySelector('#url-input'));
-    const hint = getComputedStyle(document.querySelector('#url-hint'));
+    const hint = getComputedStyle(document.querySelector('#qr-notice'));
     const error = getComputedStyle(document.querySelector('#url-error'));
     return { border: ratio(input.borderColor, input.backgroundColor), text: ratio(input.color, input.backgroundColor), hint: ratio(hint.color, 'rgb(255,255,255)'), error: ratio(error.color, 'rgb(255,255,255)') };
   });

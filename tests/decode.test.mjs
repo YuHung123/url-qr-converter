@@ -96,12 +96,13 @@ test('invalid image, exact file size boundaries, and stale bitmap cleanup', asyn
   globalThis.createImageBitmap = async () => { reads++; throw new Error('internal error'); };
   assert.deepEqual(await decodeImage(new File(['bad'], 'bad.png'), () => true), { kind: 'invalid-image' });
   assert.equal(reads, 1);
-  assert.deepEqual(await decodeImage({ size: 20 * 1024 * 1024 }, () => true), { kind: 'invalid-image' });
+  assert.deepEqual(await decodeImage(new File([new Uint8Array(20 * 1024 * 1024)], 'exact.png'), () => true), { kind: 'invalid-image' });
   assert.equal(reads, 2, 'exactly 20 MiB reaches image processing');
-  assert.deepEqual(await decodeImage({ size: 20 * 1024 * 1024 + 1 }, () => true), { kind: 'too-large' });
+  assert.deepEqual(await decodeImage(new File([new Uint8Array(20 * 1024 * 1024 + 1)], 'too-large.png'), () => true), { kind: 'too-large' });
   assert.equal(reads, 2, '20 MiB + 1 is rejected before reading');
   globalThis.createImageBitmap = async () => ({ width: 100, height: 100, close() { closed++; } });
-  assert.deepEqual(await decodeImage(new File(['x'], 'x.png'), () => false), { kind: 'stale' });
+  let checks = 0;
+  assert.deepEqual(await decodeImage(new File(['x'], 'x.png'), () => ++checks < 2), { kind: 'stale' });
   assert.equal(closed, 1);
 });
 
@@ -127,7 +128,7 @@ for (const failure of ['getContext', 'drawImage']) {
     };
     globalThis.document = { createElement(tag) { assert.equal(tag, 'canvas'); return canvas; } };
     globalThis.createImageBitmap = async () => ({ width: 100, height: 100, close() { closed++; } });
-    assert.deepEqual(await decodeImage({ size: 1 }, () => true), { kind: 'decode-failure' });
+    assert.deepEqual(await decodeImage(new File(['x'], 'x.png'), () => true), { kind: 'decode-failure' });
     assert.equal(reachedFailure, true);
     assert.equal(closed, 1);
     assert.equal(canvas.width, 0);

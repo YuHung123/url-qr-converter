@@ -25,19 +25,19 @@
           <section id="encode-panel" role="tabpanel" aria-labelledby="encode-tab" tabindex="0">
             <div class="converter-grid">
               <div class="input-section">
-                <label for="url-input">網址 <span lang="en">URL</span></label>
-                <input id="url-input" name="url" type="url" inputmode="url" placeholder="example.com" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-hint url-error" />
-                <p id="url-hint" class="field-hint">可省略 https://</p>
+                <label for="url-input">網址</label>
+                <input id="url-input" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-error" />
                 <p id="url-error" class="error-message" role="alert" aria-atomic="true"></p>
                 <button id="generate-button" class="button primary-button" type="button" disabled>產生 QR Code</button>
               </div>
               <div class="output-section">
-                <h2 id="preview-title">QR Code 預覽</h2>
+                <h2 id="preview-title" class="visually-hidden">QR Code 預覽</h2>
                 <div id="qr-preview">
                   <div id="qr-placeholder" class="preview-placeholder"><p>尚未產生 QR Code</p></div>
                   <div id="qr-image-container"></div>
                 </div>
-                <p id="qr-status" class="field-hint" role="status" aria-atomic="true"></p>
+                <p id="qr-status" class="visually-hidden" role="status" aria-atomic="true"></p>
+                <p id="qr-notice" class="field-hint" aria-hidden="true"></p>
                 <p id="qr-error" class="error-message" role="alert" aria-atomic="true"></p>
                 <div id="download-control" class="download-control">
                   <div class="download-split">
@@ -56,17 +56,16 @@
           <section id="decode-panel" role="tabpanel" aria-labelledby="decode-tab" tabindex="0" hidden>
             <div class="converter-grid">
               <div class="input-section">
-                <div id="image-drop-zone" class="image-drop-zone">
-                  <label for="qr-image">選擇圖片或拖曳到這裡</label>
-                  <input id="qr-image" name="qr-image" type="file" accept="image/*" aria-describedby="image-hint decode-error" />
-                  <p id="image-hint" class="field-hint">一次一張，最大 20 MiB</p>
+                <div id="image-drop-zone" class="image-drop-zone" role="group" aria-label="QR Code 圖片上傳區">
+                  <label for="qr-image" class="upload-action">選擇圖片或拖曳到這裡</label>
+                  <input id="qr-image" name="qr-image" class="visually-hidden file-input" type="file" accept="image/*,.svg" aria-describedby="decode-error" />
                 </div>
               </div>
               <div class="output-section">
-                <p id="result-hint" class="field-hint result-status" role="status" aria-atomic="true"></p>
-                <label for="decoded-url">網址 <span lang="en">URL</span></label>
+                <p id="result-hint" class="visually-hidden" role="status" aria-atomic="true"></p>
+                <label for="decoded-url">網址</label>
                 <div class="result-field">
-                  <textarea id="decoded-url" rows="3" readonly autocomplete="off" placeholder="尚未找到網址" aria-describedby="result-hint decode-error"></textarea>
+                  <textarea id="decoded-url" rows="3" readonly autocomplete="off" aria-describedby="result-hint decode-error"></textarea>
                   <button id="copy-button" autocomplete="off" class="button icon-button" type="button" disabled aria-label="複製網址" title="複製網址" aria-describedby="result-hint decode-error">
                     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>
                   </button>

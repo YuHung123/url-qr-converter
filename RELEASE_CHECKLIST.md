@@ -41,7 +41,7 @@ Playwright WebKit is not the same as testing real Safari on macOS/iOS.
 2. URL label，輸入 `example.com` 按 Enter；聽到結果。錯誤有 alert／invalid 狀態。
 3. 修改 draft 舊 QR 保留，聽到重新產生提示；下載仍代表顯示 QR。無效 Generate 保留舊結果，錯誤清楚。
 4. Tab 到主 PNG 下載，再到「其他下載格式」；Enter／Space 展開，方向鍵／Home／End 選擇；Escape 回 toggle，Tab／Shift+Tab 不困住焦點。
-5. 選圖 label／20 MiB 提示；成功 status、完整唯讀網址、可聚焦 copy icon（名稱「複製網址」）、開啟連結。
+5. 上傳區只顯示「選擇圖片或拖曳到這裡」，選圖控制項的 accessible name 包含同一可見 label；Tab 可到達、Space 可開啟選檔器，聚焦時上傳區有外框。正常狀態不需朗讀格式／大小限制或不存在的 20 MiB 提示；實際選擇超過 20 MiB 的檔案時，顯示並朗讀「圖片檔案過大（上限 20 MiB）。」。成功 status、完整唯讀網址、可聚焦 copy icon（名稱「複製網址」）、開啟連結。
 6. Copy 成功聽到確認；失敗仍能手動複製。新圖片清除結果與 Open Link；focused Copy／Open Link 回選圖控制項，完成不搶焦點。
 7. Open Link 只有明確點擊才開新分頁；先確認結果中的實際 URL。
 8. pending decode／Copy 時切換模式，隱藏 status 不打斷目前模式；DOM accessibility snapshot 不等於實際朗讀驗收。

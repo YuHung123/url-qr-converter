@@ -226,7 +226,9 @@ test('stale drops, drop to file and file to drop preserve newest result, Copy an
   for (const [first, second] of [['drop', 'drop'], ['drop', 'file'], ['file', 'drop']]) {
     const start = await page.evaluate(() => window.pendingBitmaps.length);
     if (first === 'drop') await drop(page, fixture('independent-ascii')); else await page.locator('#qr-image').setInputFiles(fixture('independent-ascii'));
+    await page.waitForFunction(i => window.pendingBitmaps.length === i + 1, start);
     if (second === 'drop') await drop(page, fixture('independent-unicode')); else await page.locator('#qr-image').setInputFiles(fixture('independent-unicode'));
+    await page.waitForFunction(i => window.pendingBitmaps.length === i + 2, start);
     await page.evaluate(i => window.pendingBitmaps[i](), start + 1); await expect(page.locator('#decoded-url')).toHaveValue(unicodeUrl);
     await page.evaluate(i => window.pendingBitmaps[i](), start); await expect(page.locator('#decoded-url')).toHaveValue(unicodeUrl);
     await expect(page.locator('#copy-button')).toBeEnabled(); await expect(page.locator('#open-link')).toHaveAttribute('href', unicodeUrl);
