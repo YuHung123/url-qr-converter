@@ -59,13 +59,51 @@ export function createQrMatrix(url: string): QrMatrix {
     Array.from({ length: qr.getModuleCount() }, (_, column) => qr.isDark(row, column)));
 }
 
-export function createQrPixels(url: string, matrix = createQrMatrix(url)): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number; modules: number } {
+export const MIN_PIXELS_PER_MODULE = 2;
+
+export function parseOutputSize(value: string): number {
+  if (!value.trim()) throw new Error('請輸入目標尺寸。');
+  // Keep the raw spelling: Number() alone also accepts exponents and expressions.
+  if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)$/.test(value)) throw new Error('請輸入有效的目標尺寸。');
+  if (value.includes('.')) throw new Error('請輸入整數尺寸。');
+  const size = Number(value);
+  if (size < 64) throw new Error('目標尺寸不得小於 64 px。');
+  if (size > 2048) throw new Error('目標尺寸不得大於 2048 px。');
+  return size;
+}
+
+export function resolveRasterSize(targetSize: number, totalModules: number): {
+  scale: number; actualSize: number; minimumSize: number;
+} {
+  // Apply the product range before the QR-specific minimum, including callers outside the UI.
+  parseOutputSize(String(targetSize));
+  const minimumSize = totalModules * MIN_PIXELS_PER_MODULE;
+  if (targetSize < minimumSize) throw new Error(`此 QR Code 至少需要 ${minimumSize} px。`);
+  const lowerScale = Math.floor(targetSize / totalModules);
+  const upperScale = Math.ceil(targetSize / totalModules);
+  // Prefer the larger scale on ties, but never exceed the raster resource cap.
+  const scale = upperScale * totalModules <= 2048
+    && upperScale * totalModules - targetSize <= targetSize - lowerScale * totalModules
+    ? upperScale : lowerScale;
+  return { scale, actualSize: totalModules * scale, minimumSize };
+}
+
+export function rasterGeometry(modules: number, targetSize: number): {
+  totalModules: number; scale: number; actualSize: number; minimumSize: number;
+} {
+  const totalModules = modules + 8;
+  return { totalModules, ...resolveRasterSize(targetSize, totalModules) };
+}
+
+export function createQrPixels(url: string, matrix = createQrMatrix(url), targetSize?: number, transparent = false): { data: Uint8ClampedArray<ArrayBuffer>; width: number; height: number; modules: number } {
   if (/[^\x00-\x7f]/u.test(url)) throw new Error('QR Code 內容必須是已正規化的 ASCII 網址。');
   const quietZone = 4;
   const modules = matrix.length;
-  const scale = Math.ceil(1024 / (modules + quietZone * 2));
-  const size = (modules + quietZone * 2) * scale;
-  const data = new Uint8ClampedArray(size * size * 4).fill(255);
+  const totalModules = modules + quietZone * 2;
+  const target = targetSize ?? Math.max(256, totalModules * MIN_PIXELS_PER_MODULE);
+  const { scale, actualSize: size } = rasterGeometry(modules, target);
+  const data = new Uint8ClampedArray(size * size * 4);
+  if (!transparent) data.fill(255);
   for (let row = 0; row < modules; row++) {
     for (let column = 0; column < modules; column++) {
       if (!matrix[row]?.[column]) continue;
@@ -73,6 +111,7 @@ export function createQrPixels(url: string, matrix = createQrMatrix(url)): { dat
         for (let x = (column + quietZone) * scale; x < (column + quietZone + 1) * scale; x++) {
           const offset = (y * size + x) * 4;
           data[offset] = data[offset + 1] = data[offset + 2] = 0;
+          data[offset + 3] = 255;
         }
       }
     }
@@ -80,8 +119,8 @@ export function createQrPixels(url: string, matrix = createQrMatrix(url)): { dat
   return { data, width: size, height: size, modules };
 }
 
-export function createQrCanvas(url: string, matrix = createQrMatrix(url)): HTMLCanvasElement {
-  const pixels = createQrPixels(url, matrix);
+export function createQrCanvas(url: string, matrix = createQrMatrix(url), targetSize?: number, transparent = false): HTMLCanvasElement {
+  const pixels = createQrPixels(url, matrix, targetSize, transparent);
   const canvas = document.createElement('canvas');
   canvas.width = pixels.width;
   canvas.height = pixels.height;
@@ -104,7 +143,7 @@ export function exportPng(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-export function createQrSvg(matrix: QrMatrix): string {
+export function createQrSvg(matrix: QrMatrix, transparent = false): string {
   const size = matrix.length + 8;
   const modules: string[] = [];
   for (const [row, cells] of matrix.entries()) {
@@ -112,16 +151,18 @@ export function createQrSvg(matrix: QrMatrix): string {
       if (dark) modules.push(`M${column + 4} ${row + 4}h1v1h-1z`);
     }
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#fff"/><path d="${modules.join('')}" fill="#000"/></svg>`;
+  const background = transparent ? '' : `<rect width="${size}" height="${size}" fill="#fff"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges">${background}<path d="${modules.join('')}" fill="#000"/></svg>`;
 }
 
 export type DownloadFormat = 'png' | 'svg' | 'jpg' | 'webp';
 
-export function exportQr(canvas: HTMLCanvasElement, matrix: QrMatrix, format: DownloadFormat): Promise<Blob> {
+export function exportQr(canvas: HTMLCanvasElement, matrix: QrMatrix, format: DownloadFormat, transparent = false): Promise<Blob> {
+  if (format === 'jpg' && transparent) return Promise.reject(new Error('JPG does not support transparency'));
   if (format === 'png') return exportPng(canvas);
-  if (format === 'svg') return Promise.resolve(new Blob([createQrSvg(matrix)], { type: 'image/svg+xml' }));
+  if (format === 'svg') return Promise.resolve(new Blob([createQrSvg(matrix, transparent)], { type: 'image/svg+xml' }));
   const mime = format === 'jpg' ? 'image/jpeg' : 'image/webp';
-  // The production QR canvas is opaque white with black, integer-sized modules.
+  // Encode the original raster directly, preserving WebP alpha when enabled.
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {
       if (!blob || !blob.size || blob.type !== mime) reject(new Error('無法匯出圖片。'));

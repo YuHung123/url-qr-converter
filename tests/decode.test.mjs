@@ -1,3 +1,4 @@
+import { expectedRasterSize } from './raster-expectations.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import jsQR from 'jsqr';
@@ -54,7 +55,7 @@ for (const input of [
     const pixels = createQrPixels(url);
     assert.equal(jsQR(pixels.data, pixels.width, pixels.height)?.data, url);
     assert.deepEqual(decodePixels(pixels), { kind: 'success', url });
-    assert.ok(pixels.width >= 1024);
+    assert.equal(pixels.width, expectedRasterSize(Math.max(256, (pixels.modules + 8) * 2), pixels.modules + 8));
     assert.equal(pixels.width, pixels.height);
     for (let i = 0; i < pixels.data.length; i += 4) {
       assert.ok(pixels.data[i] === 0 || pixels.data[i] === 255);

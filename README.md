@@ -5,15 +5,16 @@
 ## 使用方式
 
 - **URL → QR Code**：輸入網址（如 `example.com/path?q=1`），按 Enter 或 **產生 QR Code**。省略 scheme 時預設補 `https://`；明確輸入的 HTTP／HTTPS 保持原 scheme。
-- **下載**：主按鈕下載 PNG，右側選單提供 SVG、JPG、WebP。四種格式都是黑色 QR、白底及四格白邊；PNG 保持至少 1024 px 的無損輸出，SVG 直接由 QR matrix 產生向量圖。JPG／WebP 使用高品質瀏覽器編碼；文件排版優先使用 PNG 或 SVG。
+- **下載**：主按鈕下載 PNG，右側選單提供 SVG、JPG、WebP。四種格式預設黑色 QR、白底及四格 quiet zone；PNG／JPG／WebP 可設定 64–2048 px 的目標尺寸，預設 256 px；工具選擇最接近且能讓 QR 每格完整對齊的實際正方形尺寸；較密的 QR 有依內容計算的最小尺寸；PNG 為無損輸出，SVG 直接由 QR matrix 產生向量圖，不使用 raster 輸出尺寸。JPG／WebP 使用高品質瀏覽器編碼；文件排版優先使用 PNG 或 SVG。
+- **預覽與背景**：有效目標尺寸輸入會立即更新預覽及「實際尺寸」文字，小尺寸以接近實際 CSS 像素呈現，大尺寸縮至容器內。勾選「透明背景」可匯出透明 PNG／WebP／SVG；JPG 在透明模式下停用。棋盤格只用於預覽，不寫入下載檔。
 - 編輯網址時保留已生成 QR；只有成功按下產生後才替換。驗證失敗也保留舊 QR，短提示標明網址已修改。下載始終代表目前顯示的 QR，與輸入草稿分開。
-- **QR Code → URL**：選擇一張圖片或拖曳到上傳區。成功後可按右側 **複製網址** 圖示，或 **開啟連結**。剪貼簿不可用時，可在完整結果欄手動選取複製。
+- **QR Code → URL**：選擇一張圖片或拖曳到上傳區。圖片能被解碼成像素後，上傳區會完整顯示該圖片（找不到 QR Code 時亦保留），可再點擊或拖曳更換。成功後可按右側 **複製網址** 圖示，或 **開啟連結**。剪貼簿不可用時，可在完整結果欄手動選取複製。
 - 新圖片會清除舊解析結果。拖入多個檔案會提示一次只能選一張；非檔案內容會提示選擇圖片。明確不支援的格式會直接提示，檔案損毀則顯示讀取失敗；失敗後可重新選圖。不做批次處理。
 - **開啟連結**只在使用者主動點擊後以新分頁前往已驗證的 normalized HTTP(S) URL，使用 `noopener noreferrer`；解析成功不會自動開啟。結果欄完整保留 host、path、query 與 fragment，可換行及捲動。請先確認網址，再開啟。
 
 兩模式共用 HTTP(S) URL validation。先去除首尾空白，再拒絕其餘 raw ASCII C0／DEL 控制字元及 JavaScript whitespace；`%20` 等百分比編碼可用。明確的 javascript／data／file／blob／mailto／ws 等 scheme 仍拒絕，不會被補成 HTTPS。裸網域、含路徑或 query 的網域、`localhost` 與括號 IPv6 可省略 scheme；相對路徑及一般單詞不接受。`localhost`、IPv4 與括號 IPv6 含有效 port 時也可省略 scheme（如 `localhost:3000`、`127.0.0.1:8080`）；其他網域含 port 時請明確輸入 HTTP(S) scheme。Unicode 網域與路徑會標準化為 punycode／百分比編碼。格式驗證不代表網站存在或安全；既有 userinfo 接受行為保留，完整 normalized URL 就是開啟的網址。
 
-QR 圖片主要支援 **PNG、JPEG、WebP、SVG**；GIF／BMP 依瀏覽器支援。SVG 只接受有限的靜態黑白 `rect`／`path` 幾何，包含本工具下載的 SVG；不接受 script、事件、CSS、外部資源或嵌入內容。原始 SVG 不會插入頁面或交給影像載入器，而是解析幾何後畫成受限尺寸的 canvas，交由同一 jsQR／UTF-8／網址驗證流程處理。HEIC／HEIF 不保證支援。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR；正常畫面不顯示限制，違反時才提示。選檔與拖曳共用大小限制、768 → 2048 分階段掃描、過期結果保護及 cleanup。
+QR 圖片主要支援 **PNG、JPEG、WebP、SVG**；GIF／BMP 依瀏覽器支援。SVG 只接受有限的靜態黑白 `rect`／`path` 幾何，包含本工具下載的 SVG；不接受 script、事件、CSS、外部資源或嵌入內容。原始 SVG 不會插入頁面或交給影像載入器，而是解析幾何後畫成受限尺寸的 canvas，交由同一 jsQR／UTF-8／網址驗證流程處理；上傳區的 SVG 預覽同樣只顯示此解析器畫出的像素。HEIC／HEIF 不保證支援。檔案上限 **20 MiB**，一次只解析一張圖中的一個 QR；正常畫面不顯示限制，違反時才提示。選檔與拖曳共用大小限制、768 → 2048 分階段掃描、過期結果保護及 cleanup。
 
 ## 隱私
 
@@ -76,11 +77,13 @@ default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect
 
 ## 文件與掃描建議
 
-QR 使用 M 級錯誤修正、黑色、不透明白底、四格 quiet zone。PNG 最少 1024 × 1024，每格為整數像素：`(modules + 8) × ceil(1024 / (modules + 8))`。下載保留原始尺寸；畫面預覽 desktop 最多 240 CSS px、mobile 最多 200 CSS px。當 QR 達 version 17（85 格）以上，介面會提示改用下載圖片並保留足夠尺寸。
+QR 使用 M 級錯誤修正、黑色、預設不透明白底與四格 quiet zone。PNG／JPG／WebP 共用目標尺寸（64–2048 px，預設 256 px）；工具選擇最接近且能保持所有 QR 格子等寬的實際尺寸，實際輸出不一定等於目標值，最大為 2048 px。每格至少 2 個整數像素，保留四格 quiet zone，不加入額外置中 padding；若目標低於目前 QR 所需的最小尺寸，會顯示錯誤，由使用者自行調整。直接畫在最終像素尺寸，不縮放或插值。SVG 的 intrinsic width／height 與 viewBox 均保留 `modules + 8` 的向量幾何。預覽依實際輸出與容器可用寬度呈現，並顯示「實際尺寸：寬 × 高 px」。無效尺寸保留最後有效預覽，仍由既有 raster 驗證決定能否下載。當 QR 達 version 17（85 格）以上，介面會提示改用下載圖片並保留足夠尺寸。
 
 插入 Word／PDF 時保持正方形與四周白邊，避免 JPEG 重壓縮、裁掉白邊或用模糊截圖取代 PNG。普通短網址可先以約 **3 cm** 正方形排版；較長網址需更大。保守起點為每格約 **0.5 mm**，含白邊總寬約 `(modules + 8) × 0.5 mm`，這是排版建議，不是所有印表機／手機的掃描保證。必須掃描最終 PDF 與實際列印版本。真實手機和列印掃描仍列於 manual checklist。
 
 ## 限制
+
+- 目標尺寸與實際輸出可能不同；module-aligned snapping 的驗證與剩餘人工驗收見 [本輪驗證](V1_1_TARGET_SIZE_GEOMETRY_FIX_VERIFICATION.md)。
 
 - 不提供相機掃描、裁切、批次、歷史紀錄、縮網址、自訂樣式、PWA 或後端。
 - 過長網址超出 QR 容量時會失敗；高密度 QR 在小預覽中可能難掃，請用下載圖片並放大。

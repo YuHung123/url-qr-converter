@@ -1,109 +1,942 @@
+/*
+ * URL ↔ QR Code — B5 design system (design-exploration/b5/B5_VISUAL_SPEC.md).
+ * Colour lives in the ground: a low-chroma wash on the page, black-and-white
+ * components. One hatch texture marks where output lands (the Generate matte,
+ * the Decode drop side). Only the output itself floats (Level 1); only the
+ * download menu overlays (Level 2). Everything else is flat tonal regions.
+ * Type and control heights are in rem so user text-size settings still apply.
+ */
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #202d2a;
-  background: #f6f7f4;
+  /* Type: the display serif is used once, for the Latin title; local fonts only. */
+  --font-display: "Sitka Display", "Sitka Heading", "Iowan Old Style", Charter, "Bitstream Charter", ui-serif, Georgia, serif;
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, "Microsoft JhengHei UI", "PingFang TC", "Noto Sans TC", sans-serif;
+  --title-size: 2.5rem;
+
+  /* Ground wash (PB-C) */
+  --wash-base: #ebe6e6;
+  --wash-rose: #e2cedb;
+  --wash-mist: #d8dde9;
+
+  /* Tone steps: paper → region → wash → matte */
+  --paper: #ffffff;
+  --region: #f6f2f3;
+  --matte: #e0d7dc;
+  --disabled-bg: #e7e2e4;
+
+  /* Ink */
+  --ink: #1b171a;
+  --ink-2: #504a4f;
+  --ink-3: #6a6268;
+  --black: #1b171a;
+  --black-hover: #342d32;
+  --black-press: #0e0b0d;
+  --field-stroke: #8a8189;
+
+  /* Secondary accent (SC-F): lines, outlines, small strokes only — never fills. */
+  --accent: #2d46b4;
+
+  /* Semantic signals (SC-A): 16px glyphs only, always with a distinct shape. */
+  --success: #1d7745;
+  --warning: #985600;
+  --error: #b3261e;
+  --info: var(--accent);
+
+  /* Border (BO-F) */
+  --stroke-faint: rgba(64, 36, 52, .10);
+  --rule: rgba(64, 36, 52, .11);
+  --tab-frame: rgba(64, 36, 52, .2);
+
+  /* Texture: the one hatch, used only in texture zones. CSS gradients, because
+     the CSP's img-src 'self' blocks data: pattern images. */
+  --hatch-ink: rgba(96, 60, 82, .085);
+  --hatch: repeating-linear-gradient(-45deg, var(--hatch-ink) 0 1px, transparent 1px 7px);
+
+  /* Elevation (SH-D/E/F), tinted toward the wash hue */
+  --elev-1: 0 1px 2px rgba(78, 44, 64, .10), 0 10px 24px -10px rgba(78, 44, 64, .30);
+  --elev-2: 0 0 0 1px rgba(44, 24, 36, .08), 0 6px 12px -4px rgba(44, 24, 36, .16), 0 26px 52px -14px rgba(44, 24, 36, .38);
+
+  /* Density (CD-E). Buttons keep production's 44px minimum target. */
+  --h-command: 3rem;
+  --h-target: 2.75rem;
+  --h-control: 2.25rem;
+  --r-control: 7px;
+  --r-region: 10px;
+  --inspector: 19rem;
+  --source: 18.75rem;
+  --gap: 0.75rem;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --transition: 150ms var(--ease);
+
+  min-height: 100%;
+  font-family: var(--font-sans);
+  font-size: 100%;
+  line-height: 1.4;
+  color: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  line-height: 1.6;
-  --muted: #596760;
-  --accent: #285c49;
-  --border: #dce2dc;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--wash-base);
+  background-image:
+    radial-gradient(max(70vw, 640px) max(64vh, 520px) at 0% 0%, var(--wash-rose), transparent 74%),
+    radial-gradient(max(64vw, 600px) max(70vh, 560px) at 100% 100%, var(--wash-mist), transparent 72%);
+  background-repeat: no-repeat;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 280px; }
-button, input, textarea { font: inherit; }
+body { margin: 0; min-width: 280px; background: transparent; }
+button, input, textarea { font: inherit; color: inherit; }
+button, label, a { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:disabled, button[aria-disabled="true"], input:disabled { cursor: not-allowed; }
 [hidden] { display: none !important; }
 h1, h2, h3, p { margin: 0; }
+svg { flex-shrink: 0; }
+.button svg { width: 1.125rem; height: 1.125rem; }
 
 :focus-visible {
-  outline: 3px solid #136aab;
-  outline-offset: 4px;
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .skip-link {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  padding: 8px 16px;
-  color: white;
-  background: var(--accent);
+  top: var(--gap);
+  left: var(--gap);
+  z-index: 6;
+  padding: 0.5rem 1rem;
+  border-radius: var(--r-control);
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--elev-1);
+  font-weight: 600;
   transform: translateY(-200%);
-  z-index: 1;
 }
 .skip-link:focus { transform: translateY(0); }
-.page-shell { padding-bottom: 32px; width: min(960px, calc(100% - 48px)); margin: 0 auto; }
-.intro { padding: 40px 0 26px; }
-h1 { margin: 0; font-size: clamp(2rem, 6vw, 3.25rem); line-height: 1.2; letter-spacing: -0.045em; font-weight: 700; }
-.direction { color: var(--accent); font-weight: 400; }
-.mode-switch { display: flex; width: fit-content; max-width: 100%; padding: 5px; gap: 5px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 10px; background: #eaeee8; }
-.mode-switch button { min-height: 44px; padding: 10px 23px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 600; }
-.mode-switch button[aria-selected="true"] { color: var(--accent); background: white; border-color: var(--border); box-shadow: inset 0 -3px 0 var(--accent), 0 1px 3px #202d2a0a; }
-.mode-switch button:hover { color: var(--accent); background: #f9faf8; }
-.workspace { border: 1px solid var(--border); border-radius: 16px; background: white; box-shadow: 0 8px 28px #202d2a04; overflow-wrap: anywhere; }
-[role="tabpanel"] { padding: 30px; border-radius: 0 0 16px 16px; }
-.converter-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 38px; }
-.input-section, .output-section { min-width: 0; }
-.output-section { padding-left: 30px; border-left: 1px solid var(--border); }
-label, h2 { display: block; margin-bottom: 10px; font-size: 0.9rem; font-weight: 650; }
-label span { color: var(--muted); font-size: 0.8rem; font-weight: 400; margin-left: 5px; }
-input, textarea { width: 100%; min-width: 0; border: 1px solid #7b9383; border-radius: 7px; padding: 12px; background: #fff; color: #202d2a; }
-input::placeholder, textarea::placeholder { color: #667269; opacity: 1; }
-input[type="url"] { min-height: 48px; }
-textarea { display: block; resize: vertical; min-height: 112px; }
-input[type="file"] { padding: 12px; color: var(--muted); font-size: 0.85rem; background: #f8f9f6; }
-input::file-selector-button { min-height: 44px; font: inherit; padding: 8px; margin-right: 8px; border: 1px solid #7b9383; border-radius: 5px; background: #fff; color: var(--muted); }
-input.file-input { width: 1px; min-width: 0; height: 1px; padding: 0; border: 0; }
-.field-hint { display: block; margin-top: 8px; color: var(--muted); font-size: 0.8rem; }
-.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-.button { min-height: 44px; padding: 10px 18px; border: 1px solid transparent; border-radius: 7px; font-size: 0.9rem; font-weight: 600; }
-.primary-button { margin-top: 24px; width: 100%; background: var(--accent); color: white; }
-.primary-button:hover:not(:disabled) { background: #1d4938; }
-.primary-button:disabled { background: #e6ebe6; border-color: #d8e0d9; color: #596760; }
-.secondary-button { margin-top: 16px; width: 100%; background: #f0f5ef; border-color: #7b9383; color: var(--accent); }
-.secondary-button:hover:not(:disabled):not([aria-disabled="true"]) { background: #e3ecdf; }
-.secondary-button:disabled, .secondary-button[aria-disabled="true"] { background: #f5f6f3; border-color: var(--border); color: #596760; }
-.preview-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 206px; padding: 24px; text-align: center; border: 1px dashed #b4c2b8; border-radius: 8px; background: #fafbf8; color: var(--muted); font-size: 0.875rem; }
-.qr-canvas { display: block; width: 100%; max-width: 240px; height: auto; margin: 0 auto; image-rendering: pixelated; }
-.error-message { margin-top: 10px; color: #a12424; font-size: 0.875rem; }
-.error-message:empty, #qr-status:empty { margin: 0; }
-#qr-notice:empty { display: none; }
-input[aria-invalid="true"] { border: 2px solid #a12424; }
-.noscript-note { padding: 16px 0; color: var(--muted); }
 
-@media (max-width: 640px) {
-  .page-shell { padding-bottom: 32px; width: calc(100% - 32px); }
-  .intro { padding: 28px 0 22px; }
-  .mode-switch { width: 100%; }
-  .mode-switch button { flex: 1; padding: 10px 5px; font-size: 0.85rem; }
-  [role="tabpanel"] { padding: 24px 20px; }
-  .converter-grid { grid-template-columns: minmax(0, 1fr); gap: 26px; }
-  .qr-canvas { max-width: 200px; }
-  .output-section { padding: 24px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+/* Page frame (W-B): no enclosing card. Title, tabs, command row and the
+   regions share one left edge on the wash. */
+.page-shell {
+  width: min(70rem, 100% - 96px);
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+/* Title (TW-13 + TW-11): italic grey URL, a hairline double arrow, roman ink
+   QR Code held in four crop marks. The DOM keeps a visually-hidden " ↔ ", so
+   the heading still reads "URL ↔ QR Code". */
+.wordmark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-size: var(--title-size);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+.t-url { font-style: italic; font-weight: 400; letter-spacing: -0.01em; color: var(--ink-2); }
+.t-arrow {
+  align-self: center;
+  width: 1em;
+  height: .25em;
+  margin: .14em .28em 0 .3em;
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.25px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+.t-arrow path { vector-effect: non-scaling-stroke; }
+.t-qr {
+  --mark: .24em;
+  position: relative;
+  padding: .21em .3em .1em;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.t-qr::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(currentColor, currentColor) 0 0 / var(--mark) 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 0 / 1.5px var(--mark) no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 0 / var(--mark) 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 0 / 1.5px var(--mark) no-repeat,
+    linear-gradient(currentColor, currentColor) 0 100% / var(--mark) 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 0 100% / 1.5px var(--mark) no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 100% / var(--mark) 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) 100% 100% / 1.5px var(--mark) no-repeat;
+}
+
+.workspace { overflow-wrap: anywhere; }
+.workspace:focus-visible { outline-offset: 4px; }
+
+/* Mode tabs: two framed blocks set as one row (no shared track). Selected: a
+   paper block with an ink frame, a 2px accent foot and an accent icon. */
+.mode-switch {
+  display: grid;
+  grid-auto-flow: column;
+  /* Equal columns with a floor wider than either 600-weight label, so the
+     selected weight never changes the row's geometry. */
+  grid-auto-columns: minmax(10.25rem, 1fr);
+  width: max-content;
+  max-width: 100%;
+  gap: 8px;
+  margin: 18px 0 24px;
+}
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: calc(var(--h-control) + 0.25rem);
+  padding: 0 1rem 0 0.8125rem;
+  border: 1px solid var(--tab-frame);
+  border-radius: var(--r-control);
+  background: rgba(255, 255, 255, .28);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: left;
+  overflow-wrap: normal;
+  transition: color var(--transition), border-color var(--transition), background-color var(--transition);
+}
+.mode-switch button:hover { color: var(--ink); border-color: rgba(64, 36, 52, .34); background: rgba(255, 255, 255, .5); }
+.mode-switch button[aria-selected="true"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-color: var(--ink);
+  border-bottom: 2px solid var(--accent);
+  background: var(--paper);
+}
+.mode-switch button:focus-visible { outline-offset: 4px; }
+.tab-mark { display: inline-grid; place-items: center; }
+.tab-mark svg { width: 1.125rem; height: 1.125rem; }
+.mode-switch button[aria-selected="true"] .tab-mark { color: var(--accent); }
+
+.panel { padding: 0; }
+.panel:focus-visible { outline-offset: 4px; border-radius: var(--r-region); }
+
+/* Fields and controls */
+label { display: block; margin: 0 0 6px; font-size: 0.8125rem; font-weight: 600; color: var(--ink-2); }
+input, textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0 0.625rem;
+  border: 1px solid var(--field-stroke);
+  border-radius: var(--r-control);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+input:hover { border-color: var(--ink-2); }
+input:focus-visible { border-color: var(--ink); }
+input[aria-invalid="true"] { border-color: var(--error); box-shadow: inset 0 0 0 1px var(--error); }
+input[aria-invalid="true"]:focus-visible { outline-color: var(--error); }
+textarea { display: block; resize: none; }
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--h-target);
+  padding: 0 0.875rem;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  transition: transform 80ms var(--ease);
+}
+/* Colour eases only into hover; enabling or disabling switches at once, so no
+   intermediate low-contrast frame exists. */
+.button:hover:not(:disabled) { transition: background-color var(--transition), border-color var(--transition), color var(--transition), transform 80ms var(--ease); }
+.button:active:not(:disabled):not([aria-disabled="true"]) { transform: translateY(1px); }
+/* Black is the only button fill (MC-C); no glow. */
+.primary-button, .download-button { background: var(--black); color: #fff; }
+.primary-button:hover:not(:disabled), .download-button:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--black-hover); }
+.primary-button:active:not(:disabled), .download-button:active:not(:disabled):not([aria-disabled="true"]) { background: var(--black-press); }
+.primary-button { min-height: var(--h-command); padding: 0 1.375rem; font-size: 0.9375rem; font-weight: 600; }
+.button:disabled { background: var(--disabled-bg); border-color: transparent; color: var(--ink-3); }
+
+/* Field errors read inline; operation errors sit in a neutral strip. A drawn
+   glyph keeps every error identifiable without relying on colour alone. */
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--error);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+.error-message::before {
+  content: "";
+  flex: 0 0 1rem;
+  height: 1rem;
+  margin-top: 0.0625rem;
+  border-radius: 50%;
+  background:
+    linear-gradient(#fff, #fff) 50% 24% / 2px 0.375rem no-repeat,
+    linear-gradient(#fff, #fff) 50% 78% / 2px 2px no-repeat,
+    var(--error);
+}
+.error-message:empty { display: none; }
+#qr-error, #decode-error {
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--r-control);
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  font-size: 0.875rem;
+}
+#qr-error::before, #decode-error::before { margin-top: 0.125rem; }
+
+/* ---------- URL → QR Code ---------- */
+/* One two-column grid: the command row, then the matte and the inspector. */
+.encode-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--inspector);
+  grid-template-areas:
+    "url url"
+    "preview rail";
+  column-gap: var(--gap);
+}
+.url-field { grid-area: url; padding-bottom: 20px; }
+/* Input over the main column, Generate over the inspector column. */
+.url-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--inspector); gap: var(--gap); }
+.url-row input { min-height: var(--h-command); padding: 0 0.875rem; font-size: 1rem; }
+
+/* The matte: the Generate texture zone. The QR artboard is its only raised object. */
+.preview-area { grid-area: preview; position: relative; min-width: 0; }
+.zone-label {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.preview-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 31.25rem;
+  padding: 52px 32px 24px;
+  border-radius: var(--r-region);
+  background-color: var(--matte);
+  background-image: var(--hatch);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+}
+/* Empty (EG-C): texture plus one quiet line. No artboard, no settings echo. */
+.preview-placeholder {
+  padding: 7px 14px;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+/* The container hugs the displayed artboard (≤ 300px), so its measure line
+   always equals the displayed width while the readout states real pixels. */
+#qr-image-container { display: grid; width: fit-content; max-width: min(18.75rem, 100%); }
+#qr-image-container:empty { display: none; }
+/* Measure line: end ticks (::after) and the line (::before) share one row and
+   are drawn with borders, which snap to device pixels at any centring offset. */
+#qr-image-container::before, #qr-image-container::after {
+  content: "";
+  grid-row: 2;
+  grid-column: 1;
+  margin-top: 14px;
+}
+#qr-image-container::before { height: 5px; border-bottom: 1px solid var(--accent); }
+#qr-image-container::after { height: 9px; border: solid var(--accent); border-width: 0 1px; }
+.qr-canvas {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  background: #fff;
+  box-shadow: var(--elev-1);
+}
+.qr-canvas[data-transparent="true"], .upload-image {
+  background-color: #fff;
+  background-image: conic-gradient(#e8e4e6 25%, #fff 0 50%, #e8e4e6 0 75%, #fff 0);
+  background-size: 16px 16px;
+}
+.preview-caption {
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.preview-caption:empty, .preview-notice:empty { display: none; }
+.preview-stage > .preview-notice, .preview-stage > .error-message { width: min(100%, 27.5rem); margin-top: 4px; }
+/* Modified (warning) and dense (info) notices: neutral strip, semantic glyph. */
+.preview-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--r-control);
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.preview-notice::before {
+  content: "";
+  flex: 0 0 1rem;
+  height: 1rem;
+  margin-top: 0.125rem;
+  border-radius: 50%;
+  background:
+    linear-gradient(#fff, #fff) 50% 22% / 2px 2px no-repeat,
+    linear-gradient(#fff, #fff) 50% 76% / 2px 0.375rem no-repeat,
+    var(--info);
+}
+.preview-notice[data-tone="warning"]::before {
+  flex-basis: 1.0625rem;
+  height: 0.9375rem;
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(#fff, #fff) 50% 52% / 2px 0.3125rem no-repeat,
+    linear-gradient(#fff, #fff) 50% 86% / 2px 2px no-repeat,
+    var(--warning);
+}
+
+/* The inspector: settings region hugging its content, with the download pair
+   directly below it as one control group. The rest of the column is wash. */
+.output-rail { grid-area: rail; display: flex; flex-direction: column; min-width: 0; }
+.output-options {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 18px 6px;
+  border-radius: var(--r-region);
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+}
+/* Checkbox row: the label fills the row (one hit target) at line-height 1, so
+   the box and the CJK glyphs share one optical centre. */
+.transparent-control { display: flex; align-items: center; min-height: var(--h-control); margin: 14px 0; }
+.transparent-control input {
+  appearance: none;
+  flex: 0 0 18px;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid var(--field-stroke);
+  border-radius: 4px;
+  background: var(--paper);
+  cursor: pointer;
+  transition: background-color var(--transition), border-color var(--transition);
+}
+.transparent-control input::after { content: ""; width: 10px; height: 6px; border: solid #fff; border-width: 0 0 2px 2px; transform: translateY(-1px) rotate(-45deg); opacity: 0; }
+.transparent-control input:hover { border-color: var(--ink); }
+.transparent-control input:checked { background: var(--black); border-color: var(--black); }
+.transparent-control input:checked::after { opacity: 1; }
+.transparent-control label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  margin: 0;
+  padding-left: 10px;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.output-size-control { padding: 14px 0; border-top: 1px solid var(--rule); }
+.output-size-value { display: flex; align-items: center; gap: 0.5rem; }
+.output-size-value input { width: 7rem; max-width: calc(100% - 2rem); min-height: var(--h-control); text-align: right; font-size: 0.875rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.output-size-value span { color: var(--ink-2); font-size: 0.875rem; }
+
+/* Split download: PNG main action plus its format menu, opening downward. */
+.download-control { position: relative; padding-top: 16px; }
+.download-split { display: flex; }
+#download-button { flex: 1; border-radius: var(--r-control) 0 0 var(--r-control); }
+#download-toggle { flex: 0 0 2.5rem; width: 2.5rem; padding: 0; border-left-color: rgba(255, 255, 255, .22); border-radius: 0 var(--r-control) var(--r-control) 0; }
+#download-toggle svg { transition: transform var(--transition); }
+#download-toggle[aria-expanded="true"] { background: var(--black-hover); }
+#download-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+#download-toggle:disabled { border-left-color: #d6d0d3; }
+#download-button:focus-visible, #download-toggle:focus-visible { position: relative; z-index: 1; }
+/* Level 2: the only overlay. */
+#download-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: 100%;
+  padding: 4px;
+  border-radius: var(--r-region);
+  background: var(--paper);
+  box-shadow: var(--elev-2);
+  animation: menu-in 150ms var(--ease);
+  transform-origin: top right;
+}
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+#download-menu button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--h-control);
+  padding: 0 0.625rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+}
+#download-menu button:hover:not(:disabled), #download-menu button:focus-visible { background: var(--region); }
+#download-menu button:focus-visible { outline-offset: -3px; }
+#download-menu button:disabled { color: var(--ink-3); text-decoration: line-through; text-decoration-thickness: 1px; cursor: not-allowed; }
+
+/* ---------- QR Code → URL ---------- */
+/* Empty (ED-G): one upload field split into a hatched drop side and a region
+   action side. The field and its label span both columns through subgrid, so
+   the whole field stays one label / drop target; the error and the "選擇圖片"
+   face sit centred in the action column. The wrapper is layout-only. */
+.decode-layout {
+  --action: calc(var(--inspector) + var(--gap));
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--action);
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr);
+  min-height: 26.25rem;
+}
+.upload-field { display: contents; }
+.image-drop-zone {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  border-radius: var(--r-region);
+  background: var(--region);
+}
+/* One faint edge drawn over both halves: the field reads as one object. */
+.image-drop-zone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  pointer-events: none;
+}
+.image-drop-zone:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.image-drop-zone.drag-active::before { box-shadow: none; border: 2px dashed var(--accent); }
+.upload-action {
+  position: relative;
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: subgrid;
+  margin: 0;
+  color: var(--ink);
+  cursor: pointer;
+}
+/* The drop side: the second (and last) place the hatch appears. */
+.upload-action::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1 / -1;
+  border-right: 1px solid var(--rule);
+  border-radius: var(--r-region) 0 0 var(--r-region);
+  background-color: var(--matte);
+  background-image: var(--hatch);
+}
+.image-drop-zone:hover .upload-action::before { --hatch-ink: rgba(96, 60, 82, .13); }
+.image-drop-zone.drag-active .upload-action::before { --hatch-ink: rgba(45, 70, 180, .16); }
+.upload-cta {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1 / -1;
+  place-self: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 40px 32px;
+  padding: 14px 20px;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+}
+.upload-mark { width: 1.5rem; height: 1.5rem; color: var(--ink-2); transition: transform var(--transition), color var(--transition); }
+.image-drop-zone.drag-active .upload-mark { color: var(--accent); transform: translateY(-2px); }
+/* The action side's black face. It is generated content outside the label's
+   text (the input keeps its one accessible name; the alt text is empty) and
+   lets clicks through to the label beneath it. */
+.decode-layout::after {
+  content: "選擇圖片";
+  content: "選擇圖片" / "";
+  z-index: 3;
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--h-command);
+  margin: 0 22px;
+  border-radius: var(--r-control);
+  background: var(--black);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  pointer-events: none;
+  transition: background-color var(--transition);
+}
+.decode-layout:has(.upload-action:hover)::after { background: var(--black-hover); }
+#decode-error { z-index: 3; grid-column: 2; grid-row: 2; margin: 0 22px 14px; background: var(--paper); }
+
+/* Uploaded image: shown only after the decoder rasterised it. */
+.upload-preview { display: none; }
+.image-drop-zone[data-state="preview"] .upload-preview {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1 / -1;
+  place-self: center;
+  display: grid;
+  place-items: center;
+  max-width: calc(100% - 64px);
+  margin: 40px 32px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+}
+.upload-image {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 13.75rem;
+  width: auto;
+  height: auto;
+}
+/* With an image but no result, the drop side shows the image only; the
+   sentence stays in the accessibility tree as the input's name. */
+.image-drop-zone[data-state="preview"] .upload-cta { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Processing: the production status line becomes visible under the sentence. */
+.decode-layout:has(#open-link[hidden]):has(.image-drop-zone[data-state="processing"]) .upload-cta { color: var(--ink-3); transform: translateY(-2.25rem); }
+.decode-layout:has(#open-link[hidden]):has(.image-drop-zone[data-state="processing"]) .upload-mark { color: var(--ink-3); }
+.decode-layout:has(#open-link[hidden]):has(.image-drop-zone[data-state="processing"]) #result-hint:not(:empty) {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1 / -1;
+  place-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 10px 16px;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  border-radius: 6px;
+  background: var(--region);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  transform: translateY(2.25rem);
+  pointer-events: none;
+}
+.decode-layout:has(#open-link[hidden]):has(.image-drop-zone[data-state="processing"]) #result-hint:not(:empty)::before {
+  content: "";
+  width: 160px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(var(--accent), var(--accent)) 0 0 / 40% 100% no-repeat, var(--rule);
+  animation: sweep 1.1s var(--ease) infinite alternate;
+}
+@keyframes sweep { to { background-position: 100% 0, 0 0; } }
+
+/* Result: not drawn until a URL is found (no empty field, no fake result). It
+   stays in the DOM and tab order as production has it; if keyboard focus enters
+   it before a result exists, it appears as a flat strip so focus stays visible. */
+.decode-result { display: flex; flex-direction: column; min-width: 0; }
+.decode-layout:has(#open-link[hidden]) .decode-result:not(:focus-within) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.decode-layout:has(#open-link[hidden]) .decode-result:focus-within {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  margin-top: var(--gap);
+  padding: 20px 24px;
+  border-radius: var(--r-region);
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--stroke-faint);
+}
+.decode-layout:has(#open-link[hidden]) .decode-result::after { display: none; }
+
+/* Success (D-PV-B): the source narrows; the URL specimen takes the wide column. */
+.decode-layout:has(#open-link:not([hidden])) {
+  grid-template-columns: var(--source) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--gap);
+  min-height: 0;
+}
+.decode-layout:has(#open-link:not([hidden]))::after { display: none; }
+.decode-layout:has(#open-link:not([hidden])) .image-drop-zone {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  min-height: 0;
+  background: transparent;
+}
+.decode-layout:has(#open-link:not([hidden])) .upload-action {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 24px 20px;
+}
+.decode-layout:has(#open-link:not([hidden])) .upload-action::before {
+  position: absolute;
+  inset: 0;
+  border-right: 0;
+  border-radius: var(--r-region);
+}
+.decode-layout:has(#open-link:not([hidden])) .upload-preview { max-width: 100%; margin: 0; }
+.decode-layout:has(#open-link:not([hidden])) .upload-image { max-height: 12.5rem; }
+/* Re-pick: the production sentence as one outlined control under the image. */
+.decode-layout:has(#open-link:not([hidden])) .upload-cta {
+  position: relative;
+  width: auto;
+  height: auto;
+  min-height: var(--h-control);
+  margin: 0;
+  padding: 0.375rem 0.875rem;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  gap: 0.5rem;
+  border: 1px solid var(--field-stroke);
+  border-radius: var(--r-control);
+  background: var(--paper);
+  box-shadow: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  transition: border-color var(--transition), background-color var(--transition);
+}
+.decode-layout:has(#open-link:not([hidden])) .upload-mark { width: 1.125rem; height: 1.125rem; color: var(--ink); transform: none; }
+.decode-layout:has(#open-link:not([hidden])) .upload-action:hover .upload-cta { border-color: var(--ink); background: var(--region); }
+
+/* The specimen: Level 1, paper. The decoded URL appears once, in one colour,
+   weight and size, in production's read-only textarea. */
+.decode-layout:has(#open-link:not([hidden])) .decode-result {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 26px 32px 28px;
+  border-radius: var(--r-region);
+  background: var(--paper);
+  box-shadow: var(--elev-1);
+}
+.decode-result > label { margin: 0; line-height: 1.4; }
+.result-field { display: flex; align-items: flex-start; gap: 24px; padding: 18px 0 26px; }
+.result-field textarea {
+  flex: 1;
+  min-height: 6em;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+@supports (field-sizing: content) {
+  .result-field textarea { field-sizing: content; min-height: 1.5em; }
+}
+.result-field textarea:focus-visible { outline-offset: 4px; }
+.icon-button { flex: 0 0 auto; }
+#copy-button { min-height: var(--h-target); padding: 0 0.875rem; background: var(--paper); border-color: var(--field-stroke); color: var(--ink); }
+#copy-button:hover:not(:disabled) { border-color: var(--ink); background: var(--region); }
+#copy-button:disabled { background: var(--disabled-bg); border-color: transparent; color: var(--ink-3); }
+/* The foot: a rule, then Open Link. Visual order only; DOM order is unchanged. */
+.decode-result::after { content: ""; order: 1; margin-top: auto; border-top: 1px solid var(--rule); }
+.open-link { order: 2; align-self: flex-start; min-width: 12.5rem; margin-top: 18px; }
+
+/* Status glyph: the production status line, top right of the specimen. */
+.decode-layout:has(#open-link:not([hidden])) #result-hint:not(:empty) {
+  position: relative;
+  z-index: 1;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  margin: 27px 32px 0 1rem;
+  padding: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  color: var(--ink-2);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.decode-layout:has(#open-link:not([hidden])) #result-hint:not(:empty)::before {
+  content: "";
+  flex: 0 0 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.decode-layout:has(#open-link:not([hidden])) #result-hint:not(:empty)::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: calc(50% - 3px);
+  width: 8px;
+  height: 4px;
+  border: solid #fff;
+  border-width: 0 0 1.8px 1.8px;
+  transform: rotate(-45deg);
+}
+.decode-layout:has(#open-link:not([hidden])) #decode-error { grid-column: 2; grid-row: 2; margin: 12px 0 0; background: var(--region); }
+
+.noscript-note { padding: 1.5rem 0; color: var(--ink-2); }
+
+/* ---------- Intermediate widths ---------- */
+@media (max-width: 62.5rem) {
+  :root { --title-size: 2.125rem; --inspector: 17rem; --source: 15rem; }
+  .decode-layout:has(#open-link:not([hidden])) .decode-result { padding: 24px; }
+  .decode-layout:has(#open-link:not([hidden])) #result-hint:not(:empty) { margin: 25px 24px 0 1rem; }
+}
+
+/* ---------- Mobile (MD-B): one column in DOM order ---------- */
+@media (max-width: 45rem) {
+  :root { --title-size: 1.875rem; --h-command: 3rem; --h-control: 2.75rem; }
+  .page-shell { width: calc(100% - 32px); padding: 28px 0 40px; }
+  .mode-switch { margin: 14px 0 18px; }
+  .mode-switch { grid-auto-columns: minmax(0, 1fr); width: auto; }
+  .mode-switch button { justify-content: center; padding: 0 6px; }
+
+  .encode-layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "url" "preview" "rail"; }
+  .url-field { padding-bottom: 16px; }
+  .url-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .preview-stage { min-height: 9.5rem; padding: 52px 16px 20px; }
+  #qr-image-container { max-width: 100%; }
+  .output-rail { margin-top: var(--gap); }
+  .output-options { padding: 2px 16px 4px; }
+  .transparent-control { margin: 10px 0; }
+  .output-size-control { padding: 10px 0; }
+  .output-size-value input { width: 8rem; }
+  .download-control { padding-top: 14px; }
+
+  /* Decode empty: drop side on top, action side below. */
+  .decode-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(9.5rem, auto) 16px auto auto 16px; min-height: 0; }
+  .upload-action::before { grid-row: 1; border-right: 0; border-bottom: 1px solid var(--rule); border-radius: var(--r-region) var(--r-region) 0 0; }
+  .upload-cta { grid-row: 1; margin: 24px 16px; padding: 12px 16px; font-size: 1.0625rem; }
+  .image-drop-zone[data-state="preview"] .upload-preview { grid-row: 1; max-width: calc(100% - 32px); margin: 24px 16px; }
+  .decode-layout::after { grid-column: 1; grid-row: 4; margin: 0 16px; }
+  #decode-error { grid-column: 1; grid-row: 3; margin: 0 16px 14px; }
+  .decode-layout:has(#open-link[hidden]):has(.image-drop-zone[data-state="processing"]) #result-hint:not(:empty) { grid-row: 1; }
+  .decode-layout:has(#open-link[hidden]) .decode-result:focus-within { grid-row: 6; }
+
+  /* Decode success: the source becomes one row (thumbnail + re-pick). */
+  .decode-layout:has(#open-link:not([hidden])) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; row-gap: var(--gap); }
+  .decode-layout:has(#open-link:not([hidden])) .upload-action { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 12px; }
+  .decode-layout:has(#open-link:not([hidden])) .upload-preview { flex: 0 0 auto; padding: 6px; }
+  .decode-layout:has(#open-link:not([hidden])) .upload-image { max-width: 4.5rem; max-height: 4.5rem; }
+  .decode-layout:has(#open-link:not([hidden])) .upload-cta { flex: 1; min-width: 0; min-height: var(--h-control); justify-content: center; }
+  .decode-layout:has(#open-link:not([hidden])) .decode-result { grid-column: 1; grid-row: 2; padding: 20px 18px; }
+  .decode-layout:has(#open-link:not([hidden])) #result-hint:not(:empty) { grid-column: 1; grid-row: 2; margin: 21px 18px 0 1rem; }
+  .decode-layout:has(#open-link:not([hidden])) #decode-error { grid-column: 1; grid-row: 3; margin: 0; }
+  .result-field { flex-direction: column; align-items: stretch; gap: 14px; padding: 14px 0 20px; }
+  .result-field textarea { min-height: 9em; font-size: 1.0625rem; }
+  @supports (field-sizing: content) {
+    .result-field textarea { min-height: 1.5em; }
+  }
+  .open-link { align-self: stretch; min-width: 0; }
+}
+@media (max-width: 22.5rem) {
+  :root { --title-size: 1.6875rem; }
+  .tab-mark { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }
 
 @media (forced-colors: active) {
-  .mode-switch button[aria-selected="true"] { border-color: Highlight; }
+  .mode-switch button[aria-selected="true"] { border-bottom-color: Highlight; }
+  .error-message::before, .preview-notice::before, #result-hint::before, #result-hint::after { forced-color-adjust: none; }
+  /* Keep the title's crop marks; they draw in the forced text colour. */
+  .t-qr::before { forced-color-adjust: none; }
+  .transparent-control input { appearance: auto; width: 1.125rem; height: 1.125rem; }
+  .transparent-control input::after { display: none; }
+  .preview-stage, .output-options, .image-drop-zone, .decode-result, #download-menu, .preview-placeholder, .preview-caption, .zone-label { border: 1px solid CanvasText; }
+  .image-drop-zone.drag-active { border-color: Highlight; }
+  .decode-layout::after { border: 1px solid ButtonText; }
 }
-
-.download-control { position: relative; margin-top: 16px; }
-.download-split { display: flex; }
-.download-split .button { margin-top: 0; }
-#download-button { flex: 1; border-radius: 7px 0 0 7px; }
-#download-toggle { flex: 0 0 48px; width: 48px; border-left: 0; border-radius: 0 7px 7px 0; padding: 10px; }
-#download-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 2; width: 100%; padding: 6px; background: white; border: 1px solid #7b9383; border-radius: 7px; box-shadow: 0 6px 18px #202d2a18; }
-#download-menu button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border: 0; border-radius: 4px; background: white; color: var(--accent); text-align: left; }
-#download-menu button:hover, #download-menu button:focus-visible { background: #f0f5ef; }
-.image-drop-zone { padding: 18px; border: 1px dashed #7b9383; border-radius: 8px; background: #fafbf8; }
-.upload-action { display: block; margin: 0; min-height: 64px; padding: 18px 8px; text-align: center; cursor: pointer; color: var(--accent); }
-.image-drop-zone:focus-within { outline: 3px solid #136aab; outline-offset: 4px; }
-.image-drop-zone.drag-active { border: 2px solid var(--accent); padding: 17px; background: #e3ecdf; }
-.result-status { margin: 0 0 10px; color: var(--accent); }
-.result-status:empty { margin: 0; }
-.result-field { display: flex; align-items: flex-start; gap: 8px; }
-.result-field textarea { flex: 1; overflow-wrap: anywhere; }
-.icon-button { display: flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; padding: 10px; border-color: #7b9383; background: #f0f5ef; color: var(--accent); }
-.icon-button:disabled { color: var(--muted); background: #f5f6f3; }
-.open-link { display: block; text-align: center; text-decoration: none; }

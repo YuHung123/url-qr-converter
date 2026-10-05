@@ -1,3 +1,4 @@
+import { expectedRasterSize } from './raster-expectations.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assertHostnameCharacters, createQrCanvas, exportPng, normalizeUrl } from '../src/qr.ts';
@@ -81,30 +82,61 @@ test('直接檢查 hostname 額外字元規則，不依賴 URL parser 提前拒�
   }
 });
 
-test('download pixels keep four white modules and whole-pixel modules at short and dense versions', async () => {
+test('default raster pixels keep four white modules and integer boundaries at short and dense versions', async () => {
   const { createQrPixels } = await import('../src/qr.ts');
   const { default: qrcode } = await import('qrcode-generator');
   const { decodePixels } = await import('../src/decode.ts');
-  for (const length of [30, 200, 500, 1000, 1800]) {
+  for (const length of [20, 30, 200, 500, 1000, 1800, 2331]) {
     const url = 'https://example.com/' + 'a'.repeat(length - 20);
     const matrix = qrcode(0, 'M'); matrix.addData(url, 'Byte'); matrix.make();
     const modules = matrix.getModuleCount();
     const pixels = createQrPixels(url);
-    const scale = pixels.width / (modules + 8);
+    const total = modules + 8;
+    const scale = pixels.width / total;
+    const boundary = i => i * scale;
     assert.deepEqual(decodePixels(pixels), { kind: 'success', url });
-    assert.ok(Number.isInteger(scale)); assert.ok(pixels.width >= 1024);
+    const widths = Array.from({ length: total }, (_, i) => boundary(i + 1) - boundary(i));
+    assert.ok(widths.every(Number.isInteger));
+    assert.ok(Math.min(...widths) >= 2);
+    assert.ok(widths.every(width => width === scale));
+    assert.equal(pixels.width, expectedRasterSize(Math.max(256, total * 2), total));
+    assert.equal(pixels.width, pixels.height);
+    assert.ok(pixels.width >= 64 && pixels.width <= 370);
+    if (length === 20) {
+      assert.equal(modules, 25);
+      assert.equal(pixels.width, 264, 'default target snaps to nearest legal multiple');
+    }
+    if (length === 2331) {
+      assert.equal(modules, 177, 'near-capacity version 40');
+      assert.equal(Math.min(...widths), 2);
+      assert.equal(pixels.width, 370);
+      const { createQrMatrix } = await import('../src/qr.ts');
+      assert.throws(() => createQrMatrix(url + 'a'), undefined, 'one extra Byte exceeds EC M capacity');
+    }
+    // Compare every final pixel to the independent EC M / Byte reference.
+    // This detects shifted boundaries, interpolation and non-opaque pixels.
+    for (let y = 0; y < pixels.height; y++) for (let x = 0; x < pixels.width; x++) {
+      const row = Math.floor(y / scale) - 4;
+      const col = Math.floor(x / scale) - 4;
+      const expected = row >= 0 && col >= 0 && row < modules && col < modules && matrix.isDark(row, col) ? 0 : 255;
+      const offset = (y * pixels.width + x) * 4;
+      assert.equal(pixels.data[offset], expected);
+      assert.equal(pixels.data[offset + 1], expected);
+      assert.equal(pixels.data[offset + 2], expected);
+      assert.equal(pixels.data[offset + 3], 255);
+    }
     const dark = (x, y) => pixels.data[(y * pixels.width + x) * 4] === 0;
     for (let i = 0; i < pixels.width; i++) {
-      for (const edge of [0, 4 * scale - 1, pixels.width - 4 * scale, pixels.width - 1]) {
+      for (const edge of [0, boundary(4) - 1, boundary(total - 4), pixels.width - 1]) {
         assert.equal(dark(i, edge), false); assert.equal(dark(edge, i), false);
       }
     }
     // The top-left finder has exactly seven black modules across its top edge.
-    for (let x = 4 * scale; x < 11 * scale; x++) {
-      assert.equal(dark(x, 4 * scale), true);
-      assert.equal(dark(x, 5 * scale - 1), true);
+    for (let x = boundary(4); x < boundary(11); x++) {
+      assert.equal(dark(x, boundary(4)), true);
+      assert.equal(dark(x, boundary(5) - 1), true);
     }
-    assert.equal(dark(11 * scale, 4 * scale), false);
+    assert.equal(dark(boundary(11), boundary(4)), false);
   }
 });
 

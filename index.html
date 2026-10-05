@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="將網址轉成 QR Code，下載圖片，或從 QR Code 圖片讀取網址。" />
     <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#ebe6e6" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/main.ts"></script>
@@ -14,68 +15,87 @@
     <a class="skip-link" tabindex="0" href="#converter">跳至轉換工具</a>
     <div class="page-shell">
       <header class="intro">
-        <h1>URL <span class="direction">↔</span> QR Code</h1>
+        <h1 class="wordmark"><span class="t-url">URL</span><span class="visually-hidden"> ↔ </span><svg class="t-arrow" aria-hidden="true" viewBox="0 0 40 10"><path d="M1 5h38M5 1 1 5l4 4M35 1l4 4-4 4"/></svg><span class="t-qr">QR Code</span></h1>
       </header>
-      <main id="converter" tabindex="-1">
+      <main id="converter" class="workspace" tabindex="-1">
         <div class="mode-switch" role="tablist" aria-label="轉換模式">
-          <button id="encode-tab" type="button" role="tab" aria-selected="true" aria-controls="encode-panel" tabindex="0">URL → QR Code</button>
-          <button id="decode-tab" type="button" role="tab" aria-selected="false" aria-controls="decode-panel" tabindex="-1">QR Code → URL</button>
+          <button id="encode-tab" type="button" role="tab" aria-selected="true" aria-controls="encode-panel" tabindex="0"><span class="tab-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 13.5a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1.1 1.1M13.5 10.5a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1.1-1.1"/></svg></span>URL → QR Code</button>
+          <button id="decode-tab" type="button" role="tab" aria-selected="false" aria-controls="decode-panel" tabindex="-1"><span class="tab-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 8.5v-2a2 2 0 0 1 2-2h2M15.5 4.5h2a2 2 0 0 1 2 2v2M19.5 15.5v2a2 2 0 0 1-2 2h-2M8.5 19.5h-2a2 2 0 0 1-2-2v-2M7.5 12h9"/></svg></span>QR Code → URL</button>
         </div>
-        <div class="workspace">
-          <section id="encode-panel" role="tabpanel" aria-labelledby="encode-tab" tabindex="0">
-            <div class="converter-grid">
-              <div class="input-section">
-                <label for="url-input">網址</label>
+        <section id="encode-panel" class="panel" role="tabpanel" aria-labelledby="encode-tab" tabindex="0">
+          <div class="encode-layout">
+            <div class="url-field">
+              <label for="url-input">網址</label>
+              <div class="url-row">
                 <input id="url-input" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="url-error" />
-                <p id="url-error" class="error-message" role="alert" aria-atomic="true"></p>
                 <button id="generate-button" class="button primary-button" type="button" disabled>產生 QR Code</button>
               </div>
-              <div class="output-section">
-                <h2 id="preview-title" class="visually-hidden">QR Code 預覽</h2>
-                <div id="qr-preview">
-                  <div id="qr-placeholder" class="preview-placeholder"><p>尚未產生 QR Code</p></div>
-                  <div id="qr-image-container"></div>
+              <p id="url-error" class="error-message" role="alert" aria-atomic="true"></p>
+            </div>
+            <div class="preview-area">
+              <h2 id="preview-title" class="zone-label">QR Code 預覽</h2>
+              <div id="qr-preview" class="preview-stage">
+                <div id="qr-placeholder" class="preview-placeholder">
+                  <p>尚未產生 QR Code</p>
                 </div>
+                <div id="qr-image-container"></div>
+                <p id="preview-dimensions" class="preview-caption"></p>
                 <p id="qr-status" class="visually-hidden" role="status" aria-atomic="true"></p>
-                <p id="qr-notice" class="field-hint" aria-hidden="true"></p>
+                <p id="qr-notice" class="preview-notice" aria-hidden="true"></p>
                 <p id="qr-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <div id="download-control" class="download-control">
-                  <div class="download-split">
-                    <button id="download-button" autocomplete="off" class="button secondary-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
-                    <button id="download-toggle" autocomplete="off" class="button secondary-button" type="button" disabled aria-label="其他下載格式" aria-expanded="false" aria-controls="download-menu" aria-haspopup="menu"><span aria-hidden="true">▾</span></button>
+              </div>
+            </div>
+            <div class="output-rail">
+              <div class="output-options">
+                <div class="transparent-control">
+                  <input id="transparent-background" type="checkbox" autocomplete="off" />
+                  <label for="transparent-background">透明背景</label>
+                </div>
+                <div class="output-size-control">
+                  <label for="output-size">目標尺寸</label>
+                  <div class="output-size-value">
+                    <input id="output-size" name="output-size" type="text" inputmode="numeric" value="256" autocomplete="off" spellcheck="false" aria-describedby="output-size-error" />
+                    <span aria-hidden="true">px</span>
                   </div>
-                  <div id="download-menu" role="menu" aria-label="下載格式" hidden>
-                    <button type="button" role="menuitem" tabindex="-1" data-format="svg">Download SVG</button>
-                    <button type="button" role="menuitem" tabindex="-1" data-format="jpg">Download JPG</button>
-                    <button type="button" role="menuitem" tabindex="-1" data-format="webp">Download WebP</button>
-                  </div>
+                  <p id="output-size-error" class="error-message" role="alert" aria-atomic="true"></p>
+                </div>
+              </div>
+              <div id="download-control" class="download-control">
+                <div class="download-split">
+                  <button id="download-button" autocomplete="off" class="button download-button" type="button" disabled aria-describedby="qr-status qr-error">Download PNG</button>
+                  <button id="download-toggle" autocomplete="off" class="button download-button" type="button" disabled aria-label="其他下載格式" aria-expanded="false" aria-controls="download-menu" aria-haspopup="menu"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m7 10 5 5 5-5"/></svg></button>
+                </div>
+                <div id="download-menu" role="menu" aria-label="下載格式" hidden>
+                  <button type="button" role="menuitem" tabindex="-1" data-format="svg">Download SVG</button>
+                  <button type="button" role="menuitem" tabindex="-1" data-format="jpg">Download JPG</button>
+                  <button type="button" role="menuitem" tabindex="-1" data-format="webp">Download WebP</button>
                 </div>
               </div>
             </div>
-          </section>
-          <section id="decode-panel" role="tabpanel" aria-labelledby="decode-tab" tabindex="0" hidden>
-            <div class="converter-grid">
-              <div class="input-section">
-                <div id="image-drop-zone" class="image-drop-zone" role="group" aria-label="QR Code 圖片上傳區">
-                  <label for="qr-image" class="upload-action">選擇圖片或拖曳到這裡</label>
-                  <input id="qr-image" name="qr-image" class="visually-hidden file-input" type="file" accept="image/*,.svg" aria-describedby="decode-error" />
-                </div>
+          </div>
+        </section>
+        <section id="decode-panel" class="panel" role="tabpanel" aria-labelledby="decode-tab" tabindex="0" hidden>
+          <div class="decode-layout">
+            <div class="upload-field">
+              <div id="image-drop-zone" class="image-drop-zone" role="group" aria-label="QR Code 圖片上傳區" data-state="empty">
+                <label for="qr-image" class="upload-action"><span id="upload-preview" class="upload-preview" aria-hidden="true"></span><span class="upload-cta"><svg class="upload-mark" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4.5M7.5 9 12 4.5 16.5 9M4.5 14.5V18a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3.5"/></svg>選擇圖片或拖曳到這裡</span></label>
+                <input id="qr-image" name="qr-image" class="visually-hidden file-input" type="file" accept="image/*,.svg" aria-describedby="decode-error" />
               </div>
-              <div class="output-section">
-                <p id="result-hint" class="visually-hidden" role="status" aria-atomic="true"></p>
-                <label for="decoded-url">網址</label>
-                <div class="result-field">
-                  <textarea id="decoded-url" rows="3" readonly autocomplete="off" aria-describedby="result-hint decode-error"></textarea>
-                  <button id="copy-button" autocomplete="off" class="button icon-button" type="button" disabled aria-label="複製網址" title="複製網址" aria-describedby="result-hint decode-error">
-                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>
-                  </button>
-                </div>
-                <p id="decode-error" class="error-message" role="alert" aria-atomic="true"></p>
-                <a id="open-link" class="button secondary-button open-link" target="_blank" rel="noopener noreferrer" hidden>開啟連結</a>
-              </div>
+              <p id="decode-error" class="error-message" role="alert" aria-atomic="true"></p>
             </div>
-          </section>
-        </div>
+            <p id="result-hint" class="visually-hidden" role="status" aria-atomic="true"></p>
+            <div class="decode-result">
+              <label for="decoded-url">網址</label>
+              <div class="result-field">
+                <textarea id="decoded-url" rows="3" readonly autocomplete="off" aria-describedby="result-hint decode-error"></textarea>
+                <button id="copy-button" autocomplete="off" class="button icon-button" type="button" disabled aria-label="複製網址" title="複製網址" aria-describedby="result-hint decode-error">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></svg><span class="copy-text">複製網址</span>
+                </button>
+              </div>
+              <a id="open-link" class="button primary-button open-link" target="_blank" rel="noopener noreferrer" hidden><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5h6v6M19.5 4.5l-8 8M17.5 13.5V18a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V8A1.5 1.5 0 0 1 6 6.5h4.5"/></svg>開啟連結</a>
+            </div>
+          </div>
+        </section>
         <noscript><p class="noscript-note">請啟用 JavaScript 以使用轉換工具。</p></noscript>
       </main>
     </div>

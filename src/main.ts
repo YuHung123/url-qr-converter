@@ -1,6 +1,7 @@
-import { decodeImage } from './decode';
-import { createQrCanvas, createQrMatrix, exportQr, normalizeUrl } from './qr';
+import { decodeDimensions, decodeImage } from './decode';
+import { createQrCanvas, createQrMatrix, exportQr, MIN_PIXELS_PER_MODULE, normalizeUrl, parseOutputSize, rasterGeometry } from './qr';
 import type { DownloadFormat, QrMatrix } from './qr';
+import { parseSafeSvg } from './svg';
 
 const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
 const panels = Array.from(document.querySelectorAll<HTMLElement>('[role="tabpanel"]'));
@@ -58,6 +59,10 @@ const urlError = document.querySelector<HTMLElement>('#url-error')!;
 const qrError = document.querySelector<HTMLElement>('#qr-error')!;
 const status = document.querySelector<HTMLElement>('#qr-status')!;
 const notice = document.querySelector<HTMLElement>('#qr-notice')!;
+const outputSize = document.querySelector<HTMLInputElement>('#output-size')!;
+const outputSizeError = document.querySelector<HTMLElement>('#output-size-error')!;
+const transparentBackground = document.querySelector<HTMLInputElement>('#transparent-background')!;
+const previewDimensions = document.querySelector<HTMLElement>('#preview-dimensions')!;
 
 const downloadControl = document.querySelector<HTMLElement>('#download-control')!;
 const downloadToggle = document.querySelector<HTMLButtonElement>('#download-toggle')!;
@@ -66,6 +71,72 @@ const menuItems = Array.from(downloadMenu.querySelectorAll<HTMLButtonElement>('[
 
 let generated: { url: string; canvas: HTMLCanvasElement; matrix: QrMatrix } | null = null;
 let downloadBusy = false;
+let outputSizeRevision = 0;
+let backgroundRevision = 0;
+
+function requestedSize(matrix?: QrMatrix): number {
+  const size = parseOutputSize(outputSize.value);
+  if (matrix) rasterGeometry(matrix.length, size);
+  return size;
+}
+
+function showPreview(canvas: HTMLCanvasElement, url: string): void {
+  canvas.className = 'qr-canvas';
+  canvas.dataset.transparent = String(transparentBackground.checked);
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', `網址 ${url} 的 QR Code`);
+  imageContainer.replaceChildren(canvas);
+  previewDimensions.textContent = `實際尺寸：${canvas.width} × ${canvas.height} px`;
+  placeholder.hidden = true;
+}
+
+function updatePreview(size: number): void {
+  if (!generated) return;
+  const canvas = createQrCanvas(generated.url, generated.matrix, size, transparentBackground.checked);
+  generated.canvas = canvas;
+  showPreview(canvas, generated.url);
+}
+
+function clearSizeError(): void {
+  outputSizeError.textContent = '';
+  outputSize.removeAttribute('aria-invalid');
+}
+
+function validatedOutputSize(): number | null {
+  clearSizeError();
+  try {
+    return requestedSize(generated?.matrix);
+  } catch (error) {
+    outputSize.setAttribute('aria-invalid', 'true');
+    outputSizeError.textContent = (error as Error).message;
+    return null;
+  }
+}
+
+outputSize.addEventListener('input', () => {
+  outputSizeRevision++;
+  clearSizeError();
+  if (!generated) return;
+  let size: number;
+  try { size = requestedSize(generated.matrix); }
+  catch { return; } // Keep the last valid preview while the field is incomplete.
+  updatePreview(size);
+});
+outputSize.addEventListener('blur', () => { validatedOutputSize(); });
+outputSize.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && !event.isComposing) {
+    event.preventDefault();
+    void download('png');
+  }
+});
+
+transparentBackground.addEventListener('change', () => {
+  backgroundRevision++;
+  for (const item of menuItems) item.disabled = item.dataset.format === 'jpg' && transparentBackground.checked;
+  // A valid target of 64 can snap to a 58px actual canvas. Re-enter the target
+  // range while retaining that same uniform grid when changing only alpha.
+  if (generated) updatePreview(Math.max(64, generated.canvas.width));
+});
 
 function closeDownloadMenu(restoreFocus = false): void {
   if (downloadMenu.hidden) return;
@@ -78,7 +149,8 @@ function openDownloadMenu(last = false): void {
   if (!generated || downloadBusy) return;
   downloadMenu.hidden = false;
   downloadToggle.setAttribute('aria-expanded', 'true');
-  menuItems[last ? menuItems.length - 1 : 0]?.focus();
+  const enabledItems = menuItems.filter(item => !item.disabled);
+  enabledItems[last ? enabledItems.length - 1 : 0]?.focus();
 }
 
 downloadToggle.addEventListener('click', () => {
@@ -92,19 +164,20 @@ downloadToggle.addEventListener('keydown', event => {
   }
 });
 downloadMenu.addEventListener('keydown', event => {
-  const index = menuItems.indexOf(document.activeElement as HTMLButtonElement);
+  const enabledItems = menuItems.filter(item => !item.disabled);
+  const index = enabledItems.indexOf(document.activeElement as HTMLButtonElement);
   let next: number;
   switch (event.key) {
     case 'Escape': event.preventDefault(); closeDownloadMenu(true); return;
     case 'Tab': closeDownloadMenu(true); return;
-    case 'ArrowDown': next = (index + 1) % menuItems.length; break;
-    case 'ArrowUp': next = (index - 1 + menuItems.length) % menuItems.length; break;
+    case 'ArrowDown': next = (index + 1) % enabledItems.length; break;
+    case 'ArrowUp': next = (index - 1 + enabledItems.length) % enabledItems.length; break;
     case 'Home': next = 0; break;
-    case 'End': next = menuItems.length - 1; break;
+    case 'End': next = enabledItems.length - 1; break;
     default: return;
   }
   event.preventDefault();
-  menuItems[next]?.focus();
+  enabledItems[next]?.focus();
 });
 document.addEventListener('pointerdown', event => {
   if (!downloadControl.contains(event.target as Node)) {
@@ -129,6 +202,8 @@ function resultStatus(): void {
   // Smaller previews make dense codes harder to scan; preserve safety guidance.
   const denseMessage = generated.matrix.length >= 85 ? 'QR Code 較密，建議下載後掃描。' : '';
   notice.textContent = [modifiedMessage, denseMessage].filter(Boolean).join(' ');
+  // Presentation only: the notice glyph is a warning while the draft differs.
+  notice.dataset.tone = modifiedMessage ? 'warning' : 'info';
   status.textContent = [modifiedMessage || '已產生 QR Code。', denseMessage].filter(Boolean).join(' ');
 }
 
@@ -155,14 +230,19 @@ generateButton.addEventListener('click', () => {
 
   try {
     const matrix = createQrMatrix(url);
-    const canvas = createQrCanvas(url, matrix);
-    canvas.className = 'qr-canvas';
-    canvas.setAttribute('role', 'img');
-    canvas.setAttribute('aria-label', `網址 ${url} 的 QR Code`);
-    imageContainer.replaceChildren(canvas);
-    placeholder.hidden = true;
+    let size: number;
+    try { size = requestedSize(matrix); }
+    catch {
+      // A new QR must still generate when raster sizing is invalid. Reuse the
+      // last preview size (or 256), raised only for this matrix's minimum.
+      // The input preference and its download validation remain unchanged.
+      size = Math.max(64, generated?.canvas.width ?? 256, (matrix.length + 8) * MIN_PIXELS_PER_MODULE);
+    }
+    const canvas = createQrCanvas(url, matrix, size, transparentBackground.checked);
+    showPreview(canvas, url);
     urlInput.value = url;
     generated = { url, canvas, matrix };
+    clearSizeError();
     downloadBusy = false;
     downloadButton.removeAttribute('aria-disabled');
     downloadToggle.removeAttribute('aria-disabled');
@@ -177,17 +257,27 @@ generateButton.addEventListener('click', () => {
 });
 
 async function download(format: DownloadFormat): Promise<void> {
-  if (downloadBusy) return;
+  if (downloadBusy || (format === 'jpg' && transparentBackground.checked)) return;
   const result = generated;
   if (!result) return;
+  const revision = outputSizeRevision;
+  const background = backgroundRevision;
+  const transparent = transparentBackground.checked;
+  const sizeValue = outputSize.value;
+  const selectedSize = format === 'svg' ? null : validatedOutputSize();
+  if (format !== 'svg' && selectedSize === null) return;
+  if (format === 'svg') clearSizeError();
   // Export belongs to the displayed result, independently of the input draft.
   downloadBusy = true;
   downloadButton.setAttribute('aria-disabled', 'true');
   downloadToggle.setAttribute('aria-disabled', 'true');
   qrError.textContent = '';
   try {
-    const blob = await exportQr(result.canvas, result.matrix, format);
+    const canvas = format === 'svg' ? result.canvas : createQrCanvas(result.url, result.matrix, selectedSize!, transparent);
+    const blob = await exportQr(canvas, result.matrix, format, transparent);
     if (generated !== result) return;
+    if (background !== backgroundRevision || transparent !== transparentBackground.checked) return;
+    if (format !== 'svg' && (revision !== outputSizeRevision || sizeValue !== outputSize.value)) return;
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     try {
@@ -213,6 +303,7 @@ async function download(format: DownloadFormat): Promise<void> {
 downloadButton.addEventListener('click', () => { void download('png'); });
 for (const item of menuItems) {
   item.addEventListener('click', () => {
+    if (item.disabled) return;
     closeDownloadMenu(true);
     void download(item.dataset.format as DownloadFormat);
   });
@@ -225,12 +316,84 @@ const copyButton = document.querySelector<HTMLButtonElement>('#copy-button')!;
 const openLink = document.querySelector<HTMLAnchorElement>('#open-link')!;
 const decodeStatus = document.querySelector<HTMLElement>('#result-hint')!;
 const decodeError = document.querySelector<HTMLElement>('#decode-error')!;
+const uploadPreview = document.querySelector<HTMLElement>('#upload-preview')!;
 let decodeGeneration = 0;
 let currentUrl = '';
 let copyBusy = false;
 
+function setUploadState(state: 'empty' | 'processing' | 'preview'): void {
+  dropZone.dataset.state = state;
+}
+
+function clearUploadPreview(): void {
+  for (const canvas of uploadPreview.querySelectorAll('canvas')) canvas.width = canvas.height = 0;
+  uploadPreview.replaceChildren();
+}
+
+// The preview shows only files the decoder has already turned into pixels, and
+// draws them from the same two sources: the browser bitmap decoder for raster
+// signatures, and the restricted SVG parser for everything else. Raw SVG never
+// reaches the DOM or a browser image loader.
+async function renderUploadPreview(file: File, header: Promise<ArrayBuffer>, isCurrent: () => boolean): Promise<HTMLCanvasElement | null> {
+  const bytes = new Uint8Array(await header);
+  const ascii = String.fromCharCode(...bytes);
+  const raster = (bytes[0] === 0x89 && ascii.slice(1, 4) === 'PNG') || (bytes[0] === 0xff && bytes[1] === 0xd8)
+    || (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP') || ascii.startsWith('GIF8') || ascii.startsWith('BM');
+  if (!isCurrent()) return null;
+  let bitmap: ImageBitmap | undefined;
+  let draw: (context: CanvasRenderingContext2D, width: number, height: number) => void;
+  let width: number;
+  let height: number;
+  let limit: number;
+  if (raster) {
+    bitmap = await createImageBitmap(file);
+    ({ width, height } = bitmap);
+    draw = (context, w, h) => context.drawImage(bitmap!, 0, 0, w, h);
+    limit = 1024;
+  } else {
+    const safe = parseSafeSvg(await file.text());
+    ({ width, height, draw } = safe);
+    limit = 512;
+  }
+  try {
+    if (!isCurrent()) return null;
+    const longest = Math.max(width, height);
+    // Fit large images; enlarge small ones only by whole steps (raster at most
+    // 4x) so a tiny QR stays crisp without being blown up beyond recognition.
+    const scale = longest > limit ? 0 : Math.max(1, Math.min(raster ? 4 : Infinity, Math.floor((raster ? 192 : limit) / longest)));
+    const size = scale ? { width: width * scale, height: height * scale } : decodeDimensions(width, height, limit);
+    const canvas = document.createElement('canvas');
+    canvas.width = size.width;
+    canvas.height = size.height;
+    canvas.className = 'upload-image';
+    canvas.dataset.source = raster ? 'raster' : 'svg';
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    context.imageSmoothingEnabled = scale <= 1;
+    draw(context, size.width, size.height);
+    return canvas;
+  } finally {
+    bitmap?.close();
+  }
+}
+
+async function showUploadPreview(file: File, header: Promise<ArrayBuffer>, generation: number): Promise<void> {
+  const isCurrent = () => generation === decodeGeneration;
+  let canvas: HTMLCanvasElement | null = null;
+  try { canvas = await renderUploadPreview(file, header, isCurrent); }
+  catch { canvas = null; }
+  if (!isCurrent()) {
+    if (canvas) canvas.width = canvas.height = 0;
+    return;
+  }
+  if (canvas) uploadPreview.replaceChildren(canvas);
+  setUploadState(canvas ? 'preview' : 'empty');
+}
+
 async function readImage(files: readonly File[]): Promise<void> {
   const generation = ++decodeGeneration;
+  clearUploadPreview();
+  setUploadState('empty');
   currentUrl = decodedUrl.value = '';
   copyBusy = false;
   if (document.activeElement === copyButton || document.activeElement === openLink) imageInput.focus();
@@ -247,9 +410,16 @@ async function readImage(files: readonly File[]): Promise<void> {
   }
   const file = files[0]!;
   decodeStatus.textContent = '正在讀取圖片…';
+  setUploadState('processing');
+  // Read the signature now so the preview starts as soon as the decoder settles.
+  const header = file.slice(0, 12).arrayBuffer();
+  header.catch(() => {});
   const result = await decodeImage(file, () => generation === decodeGeneration);
   if (generation !== decodeGeneration || result.kind === 'stale') return;
   decodeStatus.textContent = '';
+  // Only results that prove the image was rasterized get a visual preview.
+  if (result.kind === 'success' || result.kind === 'no-qr' || result.kind === 'unsupported-url') void showUploadPreview(file, header, generation);
+  else setUploadState('empty');
   if (result.kind === 'success') {
     currentUrl = decodedUrl.value = result.url;
     copyButton.disabled = false;
@@ -263,7 +433,7 @@ async function readImage(files: readonly File[]): Promise<void> {
       'no-qr': '圖片中找不到 QR Code。',
       'unsupported-url': '這個 QR Code 不是網址。',
       'decode-failure': '無法讀取這張圖片。',
-      'too-large': '圖片檔案過大（上限 20 MiB）。',
+      'too-large': '圖片檔案過大(上限20MB)',
     };
     imageInput.setAttribute('aria-invalid', 'true');
     decodeError.textContent = messages[result.kind];

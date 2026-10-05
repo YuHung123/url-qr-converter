@@ -62,8 +62,10 @@ test('responsive widths, long content, square QR and 200 percent reflow', async 
   for (const width of [1440, 1280, 768, 375, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await page.locator('#encode-tab').click(); await encode(page, `https://example.com/${'portfolio-'.repeat(80)}`);
-    const box = await page.locator('canvas').boundingBox(); expect(Math.abs(box.width - box.height)).toBeLessThan(1);
-    expect(box.width).toBeLessThanOrEqual(width <= 640 ? 200 : 240);
+    const box = await page.locator('#qr-image-container canvas').boundingBox(); expect(Math.abs(box.width - box.height)).toBeLessThan(1);
+    const stage = await page.locator('#qr-image-container').boundingBox();
+    const rasterSize = await page.locator('#qr-image-container canvas').evaluate(c => c.width);
+    expect(box.width).toBeCloseTo(Math.min(rasterSize, stage.width), 1);
     await page.locator('#download-toggle').click();
     const menu = await page.locator('#download-menu').boundingBox();
     expect(menu.x).toBeGreaterThanOrEqual(0); expect(menu.x + menu.width).toBeLessThanOrEqual(width);
@@ -107,7 +109,7 @@ for (const [group, cases] of [
 test(`independent image corpus ${group}: measured performance/Canvas bounds`, async ({ page, browser }, info) => {
   test.setTimeout(120_000);
   await page.goto('/'); await encode(page, externalUrl);
-  const generated = { name: 'm1-generated.png', mimeType: 'image/png', buffer: Buffer.from(await page.locator('canvas').evaluate(c => c.toDataURL().split(',')[1]), 'base64') };
+  const generated = { name: 'm1-generated.png', mimeType: 'image/png', buffer: Buffer.from(await page.locator('#qr-image-container canvas').evaluate(c => c.toDataURL().split(',')[1]), 'base64') };
   await page.locator('#decode-tab').click(); await observeDecode(page);
   const sizes = {};
   // Three sequential observations per case; timing is reported, not a flaky speed gate.
@@ -143,7 +145,7 @@ test('screen preview density assessment at 240 and 200 CSS pixels', async ({ pag
     if (modules >= 85) await expect(page.locator('#qr-notice')).toHaveText('QR Code 較密，建議下載後掃描。');
     else await expect(page.locator('#qr-notice')).toBeEmpty();
     for (const size of [240, 200]) {
-      const pixels = await page.locator('canvas').evaluate((canvas, size) => {
+      const pixels = await page.locator('#qr-image-container canvas').evaluate((canvas, size) => {
         const scaled = document.createElement('canvas'); scaled.width = scaled.height = size;
         const ctx = scaled.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.drawImage(canvas, 0, 0, size, size);
         const data = ctx.getImageData(0, 0, size, size).data;
@@ -191,21 +193,25 @@ test('text, focus, input boundaries and selected tabs have sufficient contrast',
         else await page.mouse.move(0, 0);
         const indicator = await selected.evaluate(el => {
           const style = getComputedStyle(el);
-          const color = style.boxShadow.match(/rgba?\([^)]+\)/)?.[0];
+          // B5 framed tabs: the selected indicator is the tab's 2px accent foot.
+          const color = style.borderBottomColor;
           const luminance = color => color.match(/[\d.]+/g).slice(0, 3).map(Number)
             .map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
             .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
           const ratio = background => (Math.max(luminance(color), luminance(background)) + 0.05) / (Math.min(luminance(color), luminance(background)) + 0.05);
-          const backgrounds = [style.backgroundColor, getComputedStyle(el.parentElement).backgroundColor, style.borderBottomColor];
+          // Against the selected tab's paper, the page wash it sits on, and the
+          // unselected tab's surface.
           const other = getComputedStyle(el.parentElement.querySelector('[aria-selected="false"]'));
-          return { color, backgrounds, ratios: color ? backgrounds.map(ratio) : [], shadow: style.boxShadow,
-            otherShadow: other.boxShadow, focus: el.matches(':focus-visible'), outline: style.outlineWidth, offset: style.outlineOffset };
+          const backgrounds = [style.backgroundColor, getComputedStyle(document.documentElement).backgroundColor, other.backgroundColor];
+          return { color, backgrounds, ratios: backgrounds.map(ratio), width: style.borderBottomWidth,
+            otherColor: other.borderBottomColor, otherWidth: other.borderBottomWidth,
+            focus: el.matches(':focus-visible'), outline: style.outlineWidth, offset: style.outlineOffset };
         });
-        expect(indicator.shadow).toContain('inset');
-        expect(indicator.shadow).toContain('0px -3px 0px');
+        expect(indicator.width).toBe('2px');
         expect(indicator.ratios).toHaveLength(3);
         for (const ratio of indicator.ratios) expect(ratio).toBeGreaterThanOrEqual(3);
-        expect(indicator.otherShadow).toBe('none');
+        expect(indicator.otherWidth).toBe('1px');
+        expect(indicator.otherColor).not.toBe(indicator.color);
         expect(indicator.focus).toBe(true);
         expect(indicator.outline).toBe('3px');
         expect(indicator.offset).toBe('4px');

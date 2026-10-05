@@ -46,8 +46,10 @@ test('minimal visible copy and accessible upload/result controls', async ({ page
   await expect(page.locator('#copy-button')).toHaveAccessibleName('複製網址');
   await expect(page.locator('#decoded-url')).toHaveValue(externalUrl);
   await expect(page.locator('#result-hint')).toHaveText('已找到網址');
-  await expect(page.locator('#result-hint')).toHaveCSS('width', '1px');
-  expect(await page.locator('body').ariaSnapshot()).toContain('已找到網址');
+  // B5 shows the production status line in the result specimen. It is the same
+  // live region, so it is exposed exactly once.
+  await expect(page.locator('#result-hint')).toBeVisible();
+  expect((await page.locator('body').ariaSnapshot()).split('已找到網址').length - 1).toBe(1);
 });
 
 test('QR live status shares normal, dense and modified notices without accessible duplicates', async ({ page }, info) => {
@@ -85,7 +87,7 @@ test('QR live status shares normal, dense and modified notices without accessibl
   await inspect('restored normal', '已產生 QR Code。', '');
   const denseUrl = `https://example.com/${'a'.repeat(1000)}`;
   await encode(page, denseUrl);
-  expect(Number(await page.locator('canvas').getAttribute('data-modules'))).toBeGreaterThanOrEqual(85);
+  expect(Number(await page.locator('#qr-image-container canvas').getAttribute('data-modules'))).toBeGreaterThanOrEqual(85);
   await inspect('dense', `已產生 QR Code。 ${dense}`, dense);
   await page.locator('#url-input').fill('example.com/changed-dense');
   await inspect('modified dense', `${modified} ${dense}`, `${modified} ${dense}`);
@@ -105,9 +107,11 @@ test('exact image errors have stable copy', async ({ page }) => {
   await input.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('broken') });
   await expect(error).toHaveText('無法讀取這張圖片。');
   await input.setInputFiles({ name: 'huge.png', mimeType: 'image/png', buffer: Buffer.alloc(20 * 1024 * 1024 + 1) });
-  await expect(error).toHaveText('圖片檔案過大（上限 20 MiB）。');
+  await expect(error).toHaveText('圖片檔案過大(上限20MB)');
   await input.setInputFiles({ name: 'huge.svg', mimeType: 'image/svg+xml', buffer: Buffer.alloc(20 * 1024 * 1024 + 1) });
-  await expect(error).toHaveText('圖片檔案過大（上限 20 MiB）。');
+  await expect(error).toHaveText('圖片檔案過大(上限20MB)');
+  await page.locator('#image-drop-zone').drop({ files: { name: 'huge.png', mimeType: 'image/png', buffer: Buffer.alloc(20 * 1024 * 1024 + 1) } });
+  await expect(error).toHaveText('圖片檔案過大(上限20MB)');
   await page.locator('#image-drop-zone').drop({ files: [fixture('independent-ascii'), fixture('independent-unicode')] });
   await expect(error).toHaveText('一次只能選擇一張圖片。');
   // A valid QR with a non-URL payload is produced by the existing test helper.

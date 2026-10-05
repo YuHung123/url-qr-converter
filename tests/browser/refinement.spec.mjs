@@ -1,7 +1,9 @@
+import { expectedRasterSize } from '../raster-expectations.mjs';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import jsQR from 'jsqr';
-import { fixture, externalUrl, unicodeUrl, encode, choose, qrFile, imageVariant } from './helpers.mjs';
+import qrcode from 'qrcode-generator';
+import { fixture, externalUrl, unicodeUrl, encode, choose, qrFile, imageVariant, attachJson } from './helpers.mjs';
 
 const drop = (page, files) => page.locator('#image-drop-zone').drop({ files });
 const decodeSettled = page => page.waitForFunction(() => document.querySelector('#decoded-url').value || document.querySelector('#decode-error').textContent);
@@ -16,8 +18,8 @@ test('minimal header/footer and Enter generate scheme-less URL, with identical v
     await page.locator('#url-input').fill(input); await page.keyboard.press('Enter');
     const expected = new URL(`https://${input}`).href;
     await expect(page.locator('#url-input')).toHaveValue(expected);
-    await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${expected} 的 QR Code`);
-    const png = await page.locator('canvas').evaluate(canvas => canvas.toDataURL().split(',')[1]);
+    await expect(page.locator('#qr-image-container canvas')).toHaveAccessibleName(`網址 ${expected} 的 QR Code`);
+    const png = await page.locator('#qr-image-container canvas').evaluate(canvas => canvas.toDataURL().split(',')[1]);
     await page.locator('#decode-tab').click();
     await choose(page, { name: 'enter.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') }, expected);
     await page.locator('#encode-tab').click();
@@ -34,8 +36,8 @@ test('scheme-less localhost generates QR and Open Link uses the validated normal
     const expected = `https://${input}${input.includes('/') ? '' : '/'}`;
     await encode(page, input);
     await expect(page.locator('#url-input')).toHaveValue(expected);
-    await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${expected} 的 QR Code`);
-    const png = await page.locator('canvas').evaluate(canvas => canvas.toDataURL().split(',')[1]);
+    await expect(page.locator('#qr-image-container canvas')).toHaveAccessibleName(`網址 ${expected} 的 QR Code`);
+    const png = await page.locator('#qr-image-container canvas').evaluate(canvas => canvas.toDataURL().split(',')[1]);
     await page.locator('#decode-tab').click();
     await choose(page, { name: 'localhost.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') }, expected);
     // A raw scheme-less QR payload must pass through the same normalization.
@@ -66,42 +68,76 @@ test('editing and invalid generate preserve QR A; all downloads follow the displ
   for (const draft of [b, 'javascript:alert(1)']) {
     await page.locator('#url-input').fill(draft);
     if (draft.startsWith('javascript')) { await page.keyboard.press('Enter'); await expect(page.locator('#url-error')).not.toBeEmpty(); }
-    await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${a} 的 QR Code`);
+    await page.locator('#output-size').fill('300');
+    await expect(page.locator('#qr-image-container canvas')).toHaveAccessibleName(`網址 ${a} 的 QR Code`);
     await expect(page.locator('#qr-status')).toContainText('網址已修改');
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#download-button').click()]);
     const path = info.outputPath(`retained-${draft === b ? 'edit' : 'invalid'}.png`); await download.saveAs(path);
+    const bytes = await readFile(path); expect(bytes.readUInt32BE(16)).toBe(expectedRasterSize(300, 33)); expect(bytes.readUInt32BE(20)).toBe(expectedRasterSize(300, 33));
     await page.locator('#decode-tab').click(); await choose(page, path, a); await page.locator('#encode-tab').click();
   }
   await page.locator('#url-input').fill(b); await page.keyboard.press('Enter');
-  await expect(page.locator('canvas')).toHaveAccessibleName(`網址 ${b} 的 QR Code`);
+  await expect(page.locator('#qr-image-container canvas')).toHaveAccessibleName(`網址 ${b} 的 QR Code`);
   const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#download-button').click()]);
   const path = info.outputPath('updated.png'); await download.saveAs(path);
   await page.locator('#decode-tab').click(); await choose(page, path, b);
 });
 
-for (const [sample, url] of [['short', externalUrl], ['dense Unicode', new URL(`https://例子.測試/採訪?q=😀&long=${'a'.repeat(500)}`).href]]) {
+for (const [sample, url] of [['short', externalUrl], ['medium', `https://example.com/${'a'.repeat(500)}`], ['dense Unicode', new URL(`https://例子.測試/採訪?q=😀&long=${'a'.repeat(1000)}`).href], ['maximum practical', `https://example.com/${'a'.repeat(2311)}`]]) {
 test(`PNG SVG JPG WebP ${sample}: extension, MIME, square, opaque quiet zone and exact round trip`, async ({ page }, info) => {
   await page.evaluate(() => {
     window.exportTypes = [];
+    const toBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (...args) {
+      window.lastRaster = this.getContext('2d').getImageData(0, 0, this.width, this.height);
+      return toBlob.apply(this, args);
+    };
     const original = URL.createObjectURL;
     URL.createObjectURL = blob => { window.exportTypes.push(blob.type); return original(blob); };
   });
     await encode(page, url);
-    const modules = Number(await page.locator('canvas').getAttribute('data-modules'));
+    await page.locator('#output-size').fill('512');
+    const modules = Number(await page.locator('#qr-image-container canvas').getAttribute('data-modules'));
+    const totalModules = modules + 8;
+    const previewSize = expectedRasterSize(512, totalModules), exportSize = previewSize;
+    const minCell = exportSize / totalModules, maxCell = minCell;
+    const reference = qrcode(0, 'M'); reference.addData(url, 'Byte'); reference.make();
+    expect(modules).toBe(reference.getModuleCount());
+    const matrix = Array.from({ length: modules }, (_, row) =>
+      Array.from({ length: modules }, (_, col) => reference.isDark(row, col)));
+    const geometry = { sample, payloadLength: url.length, modules, totalModules,
+      minimumSize: totalModules * 2, target: 512, actualSize: exportSize, scale: minCell, minCell, maxCell, formats: {} };
+    const exactCanvas = await page.locator('#qr-image-container canvas').evaluate((canvas, { matrix }) => {
+      const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      let mismatches = 0;
+      for (let y = 0; y < canvas.height; y++) for (let x = 0; x < canvas.width; x++) {
+        const row = Math.floor(y / (canvas.width / (matrix.length + 8))) - 4, col = Math.floor(x / (canvas.width / (matrix.length + 8))) - 4;
+        const expected = matrix[row]?.[col] ? 0 : 255;
+        const i = (y * canvas.width + x) * 4;
+        if (data[i] !== expected || data[i + 1] !== expected || data[i + 2] !== expected || data[i + 3] !== 255) mismatches++;
+      }
+      return { width: canvas.width, height: canvas.height, mismatches };
+    }, { matrix });
+    expect(exactCanvas).toEqual({ width: previewSize, height: previewSize, mismatches: 0 });
+    expect(minCell).toBeGreaterThanOrEqual(2);
+    expect(maxCell).toBe(minCell);
+    expect(exportSize).toBeLessThan(1024);
+    if (sample === 'short') expect(exportSize).toBeLessThan(600);
+    if (sample === 'maximum practical') { expect(modules).toBe(177); expect(minCell).toBe(3); expect(maxCell).toBe(3); expect(exportSize).toBe(555); }
     await page.locator('#url-input').fill('https://example.com/uncommitted-draft');
     for (const [format, mime] of [['png', 'image/png'], ['svg', 'image/svg+xml'], ['jpg', 'image/jpeg'], ['webp', 'image/webp']]) {
       if (format !== 'png') await page.locator('#download-toggle').click();
       const [download] = await Promise.all([page.waitForEvent('download'), page.locator(format === 'png' ? '#download-button' : `[data-format="${format}"]`).click()]);
       expect(download.suggestedFilename()).toBe(`qr-code.${format}`);
       expect(await page.evaluate(() => window.exportTypes.at(-1))).toBe(mime);
-      const path = info.outputPath(`${url === externalUrl ? 'short' : 'dense'}.${format}`); await download.saveAs(path);
+      const path = info.outputPath(`${sample}.${format}`); await download.saveAs(path);
       const bytes = await readFile(path); expect(bytes.length).toBeGreaterThan(0);
       if (format === 'png') expect(bytes.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
       if (format === 'jpg') expect(bytes.subarray(0, 2).toString('hex')).toBe('ffd8');
       if (format === 'webp') { expect(bytes.subarray(0, 4).toString()).toBe('RIFF'); expect(bytes.subarray(8, 12).toString()).toBe('WEBP'); }
       if (format === 'svg') {
         const svg = bytes.toString(); const size = modules + 8;
-        expect(svg).toContain(`viewBox="0 0 ${size} ${size}"`);
+        expect(svg).toContain(`viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"`);
         expect(svg).not.toMatch(/<script|<image|href=|<metadata/);
         // Serve only this test SVG at same origin to rasterize with the browser,
         // retaining the real production CSP (no data:/blob: image permission).
@@ -119,29 +155,69 @@ test(`PNG SVG JPG WebP ${sample}: extension, MIME, square, opaque quiet zone and
         const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d'); ctx.drawImage(source, 0, 0, width, height);
         const data = ctx.getImageData(0, 0, width, height).data;
-        const border = 4 * width / (modules + 8);
+        const total = modules + 8;
+        const boundary = i => i * (width / total);
+        const start = boundary(4), end = boundary(total - 4);
         let quiet = true, opaque = true, fullQuietZone = true;
         for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
           const i = (y * width + x) * 4;
           if (data[i + 3] !== 255) opaque = false;
-          if (x < border || y < border || x >= width - border || y >= height - border) {
+          if (x < start || y < start || x >= end || y >= end) {
             if (data[i] < 200 || data[i + 1] < 200 || data[i + 2] < 200) fullQuietZone = false;
           }
           // Leave one module away from the lossy boundary for JPG/WebP.
-          const edge = ['jpg', 'webp'].includes(format) ? border - width / (modules + 8) : border;
-          if (x < edge || y < edge || x >= width - edge || y >= height - edge) {
+          const inset = ['jpg', 'webp'].includes(format) ? 3 : 4;
+          if (x < boundary(inset) || y < boundary(inset) || x >= boundary(total - inset) || y >= boundary(total - inset)) {
             if (data[i] < 250 || data[i + 1] < 250 || data[i + 2] < 250) quiet = false;
           }
         }
         let binary = ''; for (const b of data) binary += String.fromCharCode(b);
+        const intrinsicWidth = source.width, intrinsicHeight = source.height;
         if ('close' in source) source.close();
-        return { width, height, base64: btoa(binary), quiet, opaque, fullQuietZone };
+        const original = window.lastRaster;
+        let pngMatchesCanvas = true;
+        if (format === 'png') {
+          const originalData = original.data;
+          pngMatchesCanvas = data.every((value, i) => value === originalData[i]);
+        }
+        return { width, height, intrinsicWidth, intrinsicHeight,
+          base64: btoa(binary), quiet, opaque, fullQuietZone, pngMatchesCanvas };
       }, { base64: bytes.toString('base64'), mime, format, modules });
-      expect(pixels.width).toBe(pixels.height); expect(pixels.width).toBeGreaterThanOrEqual(1024);
+      expect(pixels.width).toBe(pixels.height);
+      const expectedSize = exportSize;
+      expect(pixels.width).toBe(format === 'svg' ? (modules + 8) * Math.ceil(1024 / (modules + 8)) : expectedSize);
       expect(pixels.quiet).toBe(true); expect(pixels.fullQuietZone).toBe(true); expect(pixels.opaque).toBe(true);
+      expect(pixels.pngMatchesCanvas).toBe(true);
+      if (format === 'svg') {
+        expect(pixels.intrinsicWidth).toBe(totalModules); expect(pixels.intrinsicHeight).toBe(totalModules);
+      }
+      geometry.formats[format] = { mime, width: pixels.intrinsicWidth, height: pixels.intrinsicHeight,
+        ...(format === 'svg' ? { viewBox: `0 0 ${totalModules} ${totalModules}` } : {}),
+        opaque: pixels.opaque, quietZone: pixels.fullQuietZone, pngMatchesCanvas: pixels.pngMatchesCanvas };
       expect(jsQR(new Uint8ClampedArray(Buffer.from(pixels.base64, 'base64')), pixels.width, pixels.height)?.data).toBe(url);
       if (format === 'svg') await page.unroute('**/test-export.svg');
+      await page.locator('#decode-tab').click();
+      await choose(page, path, url);
+      if (format === 'svg') {
+        await page.locator('#image-drop-zone').drop({ files: path });
+        await expect(page.locator('#decoded-url')).toHaveValue(url);
+      }
+      await page.locator('#encode-tab').click();
     }
+    const exactExport = await page.evaluate(({ matrix }) => {
+      const { data, width, height } = window.lastRaster;
+      let mismatches = 0;
+      for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+        const row = Math.floor(y / (width / (matrix.length + 8))) - 4;
+        const col = Math.floor(x / (width / (matrix.length + 8))) - 4;
+        const expected = matrix[row]?.[col] ? 0 : 255;
+        const i = (y * width + x) * 4;
+        if (data[i] !== expected || data[i + 1] !== expected || data[i + 2] !== expected || data[i + 3] !== 255) mismatches++;
+      }
+      return { width, height, mismatches };
+    }, { matrix });
+    expect(exactExport).toEqual({ width: exportSize, height: exportSize, mismatches: 0 });
+    await attachJson(info, 'export-sizing', geometry);
 });
 }
 
