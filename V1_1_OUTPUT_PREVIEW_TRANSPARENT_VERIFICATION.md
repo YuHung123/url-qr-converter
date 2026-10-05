@@ -192,7 +192,7 @@ Evidence：`test-results/output-preview-transparent-f3f5d-trained-CSS-and-screen
 
 ## 13. Required Gates
 
-環境：Windows **10.0.26200**、native Node **v24.21.0**、npm **11.19.0**、Playwright **1.63.0**，原 repository `C:\Users\yuhun\Desktop\url-qr-converter`。最終 gate run 重新 `npm.cmd ci`，manifest／lockfile unchanged。
+環境：Windows **10.0.26200**、native Node **v24.21.0**、npm **11.19.0**、Playwright **1.63.0**，原 repository `<repo>`。最終 gate run 重新 `npm.cmd ci`，manifest／lockfile unchanged。
 
 | Gate | Result |
 | --- | --- |

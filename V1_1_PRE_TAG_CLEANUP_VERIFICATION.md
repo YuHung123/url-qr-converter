@@ -72,7 +72,7 @@ SVG parser／security logic、CSP、dependencies 沒有本輪修改。既有 SVG
 
 - Windows 11，version 10.0.26200、build 26200。
 - Native Node `v24.21.0`、npm `11.19.0`；installed Playwright `1.63.0`。
-- Native cwd：`C:\Users\yuhun\Desktop\url-qr-converter`。
+- Native cwd：`<repo>`。
 - 在 `npm.cmd ci` 前唯讀檢查 Windows Node／cmd command lines 與 4173／5173 listeners；只有 Codex service Node processes，沒有本專案舊 Vite／Playwright server，兩個 ports 都 free。沒有停止任何 process，也沒有碰其他專案／服務。
 - `npm.cmd ci` exit 0：added 23 packages、audited 24 packages、0 vulnerabilities。manifest／lockfile hash 不變；安裝後 `git status` 與 hash 快照確認 0 unexpected install modification。
 - 使用 `npm.cmd`，沒有修改 Windows execution policy。
@@ -101,7 +101,7 @@ SVG parser／security logic、CSP、dependencies 沒有本輪修改。既有 SVG
 | `git diff --check` | PASS，exit 0 |
 | `git diff --cached --check` | PASS，exit 0；index 無 staged changes |
 
-Canonical reporter：`test-results/results.json`（ignored），startTime `2026-10-02T12:41:07.696Z`。expected 96、skipped 0、unexpected 0、flaky 0、errors 空；96 個 results 都是 passed、單次執行、retry 0。reporter rootDir／project testDir 指向原 repository `C:/Users/yuhun/Desktop/url-qr-converter/tests/browser`；workers 1、retries 0、timeout 60000，與開始時 config 一致。
+Canonical reporter：`test-results/results.json`（ignored），startTime `2026-10-02T12:41:07.696Z`。expected 96、skipped 0、unexpected 0、flaky 0、errors 空；96 個 results 都是 passed、單次執行、retry 0。reporter rootDir／project testDir 指向原 repository `tests/browser`；workers 1、retries 0、timeout 60000，與開始時 config 一致。
 
 相對基準 31 tests／engine，本輪只新增 1 個 announcement regression／engine，總數由 93 增至 96；没有為維持舊 count 刪測試。既有 `quality.spec.mjs` byte-identical：encode 4 scans、decode 3 scans，共 7×3＝21；没有新增 scan、disable rules 或 broad exclude，全部 violations assertions 通過。
 

@@ -113,7 +113,7 @@ Automated jsQR regression **不等於 real phone scan**。
 
 ## 10. Required Gates
 
-環境：Windows 11 `10.0.26200`／build 26200、native Node `v24.21.0`、npm `11.19.0`、Playwright `1.63.0`。Native cwd：`C:\Users\yuhun\Desktop\url-qr-converter`。
+環境：Windows 11 `10.0.26200`／build 26200、native Node `v24.21.0`、npm `11.19.0`、Playwright `1.63.0`。Native cwd：`<repo>`。
 
 初次 sandbox 內 Windows probe 在 WSL interop 層得到 `UtilBindVsockAnyPort: socket failed 1`，尚未執行任何 Windows gate；允許的 sandbox 外執行隨後成功。開始時 4173 有本專案的既有 Vite preview PID 46028；核對其完整 command line 後只停止此 project preview，再 `npm.cmd ci`。沒有停止其他專案或 Codex services。Manifest／lockfile hash 不變，沒有 unexpected install modification。
 

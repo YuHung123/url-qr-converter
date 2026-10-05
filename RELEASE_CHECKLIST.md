@@ -1,10 +1,16 @@
 # Release checklist — v1.1.0 candidate
 
-本機 candidate，不建立 v1.1.0 tag、不 push、不部署。實際執行結果見 [V1_1_VERIFICATION](V1_1_VERIFICATION.md)。
+本機 candidate，不建立 v1.1.0 tag、不 push、不部署。最終 B5 production 實作與既有驗證見 [B5_PRODUCTION_IMPLEMENTATION_VERIFICATION](B5_PRODUCTION_IMPLEMENTATION_VERIFICATION.md)；本次 cleanup 與 gate 狀態見 [V1_1_RELEASE_PREPARATION_VERIFICATION](V1_1_RELEASE_PREPARATION_VERIFICATION.md)。
 v1.0.1 的 30 Node／4 artifact／48 browser、Windows default fresh-clone 結果保留於 [V1_0_1_VERIFICATION](V1_0_1_VERIFICATION.md) 與 [獨立 pre-push audit](V1_0_1_PRE_PUSH_AUDIT.md)，不改寫歷史結果。
 `PASS WITH NOTE` 表示有已記錄的限制；`NOT VERIFIED` 不等於通過。
 
-本輪採用目標尺寸 snapping 與等寬整數 raster geometry；保留 output preview／transparent background。以下既有 candidate 勾選不代表本輪 gate 結果，請以 [本輪報告](V1_1_TARGET_SIZE_GEOMETRY_FIX_VERIFICATION.md) 為準。
+目前採用最終 B5 light UI、目標尺寸 snapping 與等寬整數 raster geometry，保留 output preview／transparent background。功能驗證仍見 [V1_1_VERIFICATION](V1_1_VERIFICATION.md)、[target-size geometry](V1_1_TARGET_SIZE_GEOMETRY_FIX_VERIFICATION.md) 與 [functional freeze](V1_1_FUNCTIONAL_FREEZE_VERIFICATION.md)。
+
+Release security readiness 以 [V1_1_FINAL_RELEASE_SECURITY_AUDIT](V1_1_FINAL_RELEASE_SECURITY_AUDIT.md) 為 authoritative：`PASS_WITH_NOTE`，無 Blocker／Important；ME-1 是 tag 前必要條件。M-1（SVG leading processing instruction）、M-2（crafted SVG trailing whitespace stall）與 M-5（empty decode result focus reflow）刻意 deferred，維持非阻擋 Minor。
+
+以下勾選保留既有 candidate 歷史結果，不代表本次 final gate 已通過。最終 Windows PowerShell browser gate 必須在本次 cleanup 後的相同 working tree 執行 `npm run test:browser`：Chromium 77/77、Firefox 77/77、WebKit 77/77，合計 231/231，0 skipped、0 retries、0 flaky，axe clean。結果未供應前不得宣告 release ready。
+
+- [ ] Final Windows 231/231 browser result supplied and recorded in the release-preparation report.
 
 ## Automated candidate gates
 

@@ -173,7 +173,7 @@ Dimension text 在 body accessibility snapshot 只出現一次；size/background
 
 ## 14. Required Gates
 
-Windows **10.0.26200**、native Node **v24.21.0**、npm **11.19.0**、Playwright **1.63.0**，原 repository `C:\Users\yuhun\Desktop\url-qr-converter`。Clean指重新 `npm.cmd ci` 安裝；依任務保留已知未提交working tree，未清除source changes。
+Windows **10.0.26200**、native Node **v24.21.0**、npm **11.19.0**、Playwright **1.63.0**，原 repository `<repo>`。Clean指重新 `npm.cmd ci` 安裝；依任務保留已知未提交working tree，未清除source changes。
 
 | Gate | Result |
 | --- | --- |

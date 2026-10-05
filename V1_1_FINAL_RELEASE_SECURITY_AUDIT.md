@@ -77,7 +77,7 @@ Unchanged since v1.0.1, confirmed by an empty `git diff v1.0.1..HEAD`: `vite.con
 - **Tracked files (69):** source, tests, configuration, docs, `public/` (favicon, `_headers`, THIRD_PARTY_NOTICES) and two fixture PNGs (450 B and 387 B). No other binaries.
 - **Not tracked:** `node_modules`, `dist`, `test-results`, ZIP files, screenshots, `design-exploration/`, `production-b5-review/`, `.env` and editor metadata. `.gitignore` covers these.
 - **Secrets scan** (`git grep` for api key, secret, token, password, private-key headers, `ghp_`, `sk-`, `AKIA`, `xox`): no credentials. The only hits are prose and a test string (`localhost:password@evil.test`).
-- **Local paths:** `C:\Users\yuhun\Desktop\url-qr-converter` appears in several tracked verification reports. Some date from v1.0.x (already public on `main`); five new v1.1 reports add more. None are in `dist`, and they are not secret (M-6).
+- **Local paths:** a machine-specific Windows checkout path (redacted as `<repo>`) appears in several tracked verification reports. Some date from v1.0.x (already public on `main`); five new v1.1 reports add more. None are in `dist`, and they are not secret (M-6).
 - **Commit identity:** the only author/committer email is `yuhung0516@gmail.com`.
 - **`git diff --check`:** clean for the working tree. `git diff --check v1.0.1..HEAD` reports one trailing-whitespace line in `tests/browser/output-preview-transparent.spec.mjs:68` (M-4).
 
@@ -538,7 +538,7 @@ None.
 | M-3 | Release docs | The CHANGELOG 1.1.0 first bullet describes the superseded R2 design ("ultramarine title band", "raised mode tabs", "dotted light-table QR stage", "scan-frame"), not the accepted B5 UI. The list has stray blank lines. RELEASE_CHECKLIST's header still points to `V1_1_TARGET_SIZE_GEOMETRY_FIX_VERIFICATION.md` as "本輪". | `CHANGELOG.md:5,12,14`; `RELEASE_CHECKLIST.md:7` | Documentation accuracy only; not in `dist` | Rewrite the bullet for B5 (wash ground, framed tabs, inspector rail, downward menu, …) during release prep, when "(unreleased)" is replaced anyway |
 | M-4 | Repo hygiene | One trailing-whitespace line in a test introduced in the candidate | `tests/browser/output-preview-transparent.spec.mjs:68`; `git diff --check v1.0.1..HEAD` | None | Strip it in the next normal commit |
 | M-5 | Decode-empty UX | Revealing the empty result strip on keyboard focus reflows the upload zone above it (desktop zone height about 420 → 260 px). Focus remains visible and context does not change. | Probe screenshots at 1280 and 375 widths; `styles.css:705-725` | Cosmetic. Accessible and predictable (§19) | Optional: reserve the row, or overlay the strip below the zone without changing its height |
-| M-6 | Repo hygiene | The new v1.1 verification reports include the local Windows path `C:\Users\yuhun\Desktop\url-qr-converter` (some v1.0.x docs already did) | e.g. `V1_1_CUSTOM_OUTPUT_SIZE_VERIFICATION.md:175`, `V1_1_PRE_TAG_CLEANUP_VERIFICATION.md:75` | Not secret and not in `dist`; reveals a local username only | Optional: replace with `<repo>` in future reports |
+| M-6 | Repo hygiene | The new v1.1 verification reports include a local Windows checkout path (redacted as `<repo>`) (some v1.0.x docs already did) | e.g. `V1_1_CUSTOM_OUTPUT_SIZE_VERIFICATION.md:175`, `V1_1_PRE_TAG_CLEANUP_VERIFICATION.md:75` | Not secret and not in `dist`; reveals a local username only | Optional: replace with `<repo>` in future reports |
 
 ### Manual / Environment
 See §26. ME-1 is a **pre-tag precondition**. The others are not release-blocking.

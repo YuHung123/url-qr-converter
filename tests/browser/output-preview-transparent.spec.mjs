@@ -65,7 +65,7 @@ async function inspectTransparentRaster(page, bytes, format, size, url) {
     let binary = ''; for (const b of data) binary += String.fromCharCode(b);
     return { width: c.width, height: c.height, rgba: btoa(binary) };
   }, { base64: bytes.toString('base64'), mime });
-  
+
   const reference = qrcode(0, 'M'); reference.addData(url, 'Byte'); reference.make();
   const modules = reference.getModuleCount(), total = modules + 8;
   const target = size; size = expectedRasterSize(target, total);

@@ -172,7 +172,7 @@ SVG dimensions 保持 `modules + 8`：Short 41 × 41、Medium 97 × 97、Dense 1
 
 ## 11. Required Gates
 
-環境：Windows **10.0.26200.9550**、native Node **v24.21.0**、npm **11.19.0**、installed Playwright **1.63.0**；cwd `C:\Users\yuhun\Desktop\url-qr-converter`。
+環境：Windows **10.0.26200.9550**、native Node **v24.21.0**、npm **11.19.0**、installed Playwright **1.63.0**；cwd `<repo>`。
 
 | Gate | Result |
 | --- | --- |
@@ -192,7 +192,7 @@ SVG dimensions 保持 `modules + 8`：Short 41 × 41、Medium 97 × 97、Dense 1
 | `git diff --check` | PASS，exit 0 |
 | `git diff --cached --check` | PASS，exit 0；staged none |
 
-Canonical reporter：`test-results/results.json`，startTime **2026-10-02T15:50:50.041Z**。expected 129、skipped 0、unexpected 0、flaky 0、errors 空；129 個 tests 各只有一個 result，全部 passed、retry sum 0。rootDir／三個 project testDir 指向原 repository `C:/Users/yuhun/Desktop/url-qr-converter/tests/browser`；workers 1、retries 0、project timeout 60000。沒有替代 config、copied tests、alternate port、skip、retry、timeout 或 axe-rule 修改。
+Canonical reporter：`test-results/results.json`，startTime **2026-10-02T15:50:50.041Z**。expected 129、skipped 0、unexpected 0、flaky 0、errors 空；129 個 tests 各只有一個 result，全部 passed、retry sum 0。rootDir／三個 project testDir 指向原 repository `tests/browser`；workers 1、retries 0、project timeout 60000。沒有替代 config、copied tests、alternate port、skip、retry、timeout 或 axe-rule 修改。
 
 Final browser gate 自行重建的 dist 與 artifact gate 所驗證檔案逐檔 SHA-256 相同，因此 artifact evidence 仍適用。最後只產出本報告，沒有改 gate inputs。
 
